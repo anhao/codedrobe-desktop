@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">CodeDrobe app icon</title>
+  <desc id="desc">The CodeDrobe modular C on a dark rounded-square application icon.</desc>
+  <defs>
+    <linearGradient id="background" x1="160" y1="100" x2="864" y2="924" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#251F36"/>
+      <stop offset="1" stop-color="#111018"/>
+    </linearGradient>
+  </defs>
+  <rect x="52" y="52" width="920" height="920" rx="232" fill="url(#background)"/>
+  <g transform="translate(128 128) scale(1.5)" fill="none" stroke-width="70" stroke-linecap="round">
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#F0B94B" transform="rotate(55 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#F8F7FC" transform="rotate(95 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#F8F7FC" transform="rotate(135 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#F8F7FC" transform="rotate(180 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#F8F7FC" transform="rotate(225 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#F8F7FC" transform="rotate(265 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#8174FF" transform="rotate(305 256 256)"/>
+  </g>
+</svg>

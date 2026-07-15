@@ -1,0 +1,151 @@
+name: CodeDrobe Desktop CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - 'desktop-v*'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  validate:
+    name: Validate desktop and pinned core
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check and test desktop and core
+        run: npm run check
+
+  build-macos:
+    name: Build macOS arm64
+    needs: validate
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build DMG and ZIP
+        run: npm run make -- --arch=arm64
+
+      - name: Verify macOS artifacts and bundled runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f out/make/CodeDrobe.dmg
+          find out/make -type f -name '*.zip' -print -quit | grep -q .
+          test -d out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/scripts
+          test -d out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/assets
+          test -d out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/themes
+          test -f out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/LICENSE
+          test -f out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/SOURCE_CODE.md
+          test -f out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/THIRD_PARTY_NOTICES.md
+          test -f out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/licenses/Apache-2.0.txt
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: CodeDrobe-macOS-arm64-${{ github.sha }}
+          path: |
+            out/make/**/*.dmg
+            out/make/**/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  build-windows:
+    name: Build Windows x64
+    needs: validate
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Squirrel installer
+        run: npm run make -- --arch=x64
+
+      - name: Verify Windows artifacts and bundled runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Get-ChildItem out/make -Recurse -Filter 'CodeDrobe-Setup.exe')) {
+            throw 'CodeDrobe-Setup.exe was not generated.'
+          }
+          if (-not (Get-ChildItem out/make -Recurse -Filter '*.nupkg')) {
+            throw 'The Squirrel .nupkg was not generated.'
+          }
+          if (-not (Get-ChildItem out/make -Recurse -Filter 'RELEASES')) {
+            throw 'The Squirrel RELEASES file was not generated.'
+          }
+          $resources = 'out/CodeDrobe-win32-x64/resources'
+          foreach ($directory in @('scripts', 'assets', 'themes')) {
+            if (-not (Test-Path (Join-Path $resources $directory))) {
+              throw "Bundled resource directory is missing: $directory"
+            }
+          }
+          foreach ($file in @('LICENSE', 'SOURCE_CODE.md', 'THIRD_PARTY_NOTICES.md', 'licenses/Apache-2.0.txt')) {
+            if (-not (Test-Path (Join-Path $resources $file))) {
+              throw "Bundled license or source notice is missing: $file"
+            }
+          }
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: CodeDrobe-Windows-x64-${{ github.sha }}
+          path: |
+            out/make/**/*.exe
+            out/make/**/*.nupkg
+            out/make/**/RELEASES
+          if-no-files-found: error
+          retention-days: 14

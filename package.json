@@ -1,0 +1,41 @@
+{
+  "name": "codedrobe-desktop",
+  "productName": "CodeDrobe",
+  "version": "0.1.0",
+  "description": "A one-click theme manager for the Codex desktop app on macOS and Windows.",
+  "author": "CodeDrobe",
+  "license": "MPL-2.0",
+  "main": ".vite/build/main.js",
+  "private": true,
+  "scripts": {
+    "icons": "node scripts/generate-desktop-icons.mjs",
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "test": "vitest run",
+    "test:core": "node node_modules/@codedrobe/codex-core/scripts/self-test.mjs",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run test && npm run test:core"
+  },
+  "dependencies": {
+    "@codedrobe/codex-core": "file:vendor/codedrobe-codex-core-0.2.0.tgz",
+    "electron-squirrel-startup": "^1.0.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.8.3",
+    "@electron-forge/maker-dmg": "^7.8.3",
+    "@electron-forge/maker-squirrel": "^7.8.3",
+    "@electron-forge/maker-zip": "^7.8.3",
+    "@electron-forge/plugin-vite": "^7.8.3",
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.2",
+    "electron": "^37.3.1",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.3",
+    "vitest": "^3.2.4"
+  }
+}

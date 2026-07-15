@@ -1,0 +1,61 @@
+{
+  "meta": {
+    "title": "CodeDrobe Logo Exploration v1",
+    "stage": "Logo exploration",
+    "brand_name": "CodeDrobe",
+    "anchor": "A developer-first theme creation, management, and marketplace platform, starting with Codex.",
+    "summary": "Explore compact C monograms that suggest themes, layers, switching, and a digital wardrobe without literal fashion imagery."
+  },
+  "constraints": {
+    "preserve": [
+      "Exact brand spelling: CodeDrobe",
+      "Developer-first product character",
+      "Clear silhouette at 16px and 24px",
+      "Suitable for app icon, tray icon, favicon, installer, and website",
+      "Flat, simple geometry on a white inspection background"
+    ],
+    "avoid": [
+      "The previous D monogram",
+      "OpenAI or Codex brand symbols",
+      "Literal clothing, mannequins, faces, or hangers",
+      "Beauty, cosmetics, or skincare cues",
+      "3D effects, mockups, gradients, shadows, and watermarks"
+    ]
+  },
+  "routes": [
+    {
+      "id": "wardrobe-c",
+      "name": "Wardrobe C",
+      "strategy": "Form a bold C from two offset sliding panels and a clean negative-space opening."
+    },
+    {
+      "id": "layered-c",
+      "name": "Layered C",
+      "strategy": "Build a C from stacked theme cards to communicate themes, variants, and depth."
+    },
+    {
+      "id": "swap-c",
+      "name": "Swap C",
+      "strategy": "Use two interlocking arcs to imply changing and activating a theme."
+    },
+    {
+      "id": "modular-c",
+      "name": "Modular C",
+      "strategy": "Assemble a C from a small set of rounded modules for a creator-platform feel."
+    },
+    {
+      "id": "code-c",
+      "name": "Code C",
+      "strategy": "Combine a C silhouette with a subtle bracket or cursor notch without becoming a generic code icon."
+    },
+    {
+      "id": "icon-c",
+      "name": "Icon C",
+      "strategy": "Create the simplest app-icon-first C with one distinctive theme-switch notch."
+    }
+  ],
+  "handoff": {
+    "default_owner": "external-production-identity",
+    "next_step": "Select one route, redraw it as production SVG, and test at tray and favicon sizes."
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "brand_name": "CodeDrobe",
+  "selected_route": {
+    "id": "modular-c",
+    "label": "Modular C",
+    "family": "geometric monogram",
+    "source_position": "concept board, item 4 (bottom-left)",
+    "rationale": "Seven independent theme modules form a recognizable C, combining theme variety, creator contributions, and one-click switching in a compact app-icon silhouette.",
+    "best_for": [
+      "desktop app icon",
+      "menu bar and system tray",
+      "favicon",
+      "theme package badge",
+      "marketplace creator identity"
+    ],
+    "watch_out": "Keep module gaps visible at small sizes and avoid adding more colors or internal detail.",
+    "next_step": "Approve the vector draft, then replace the desktop icon source and regenerate macOS and Windows icon packs."
+  },
+  "preserve": [
+    "seven-module C silhouette",
+    "open right side",
+    "violet upper endpoint",
+    "gold lower endpoint",
+    "deep ink primary modules",
+    "rounded geometric construction"
+  ],
+  "avoid": [
+    "literal wardrobes or clothing",
+    "old D monogram",
+    "OpenAI or Codex marks",
+    "gradients inside the core mark",
+    "shadows and tiny decorative detail"
+  ],
+  "status": "selected-vector-draft"
+}

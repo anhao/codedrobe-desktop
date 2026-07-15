@@ -1,0 +1,10 @@
+node_modules/
+.vite/
+out/
+coverage/
+*.log
+.DS_Store
+.env
+.env.*
+*.p12
+*.p8

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">CodeDrobe modular C logo</title>
+  <desc id="desc">Seven rounded modules form a letter C, with violet and gold accent modules.</desc>
+  <g fill="none" stroke-width="70" stroke-linecap="round">
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#D6A24A" transform="rotate(55 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#17131A" transform="rotate(95 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#17131A" transform="rotate(135 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#17131A" transform="rotate(180 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#17131A" transform="rotate(225 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#17131A" transform="rotate(265 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#6C5CE7" transform="rotate(305 256 256)"/>
+  </g>
+</svg>

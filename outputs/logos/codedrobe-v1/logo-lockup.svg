@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 420" role="img" aria-labelledby="title desc">
+  <title id="title">CodeDrobe horizontal logo</title>
+  <desc id="desc">The CodeDrobe modular C paired with the CodeDrobe wordmark.</desc>
+  <g transform="translate(8 -46) scale(.82)" fill="none" stroke-width="70" stroke-linecap="round">
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#D6A24A" transform="rotate(55 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#17131A" transform="rotate(95 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#17131A" transform="rotate(135 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#17131A" transform="rotate(180 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#17131A" transform="rotate(225 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#17131A" transform="rotate(265 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#6C5CE7" transform="rotate(305 256 256)"/>
+  </g>
+  <text x="440" y="270" fill="#17131A" font-family="Inter, SF Pro Display, Segoe UI, Arial, sans-serif" font-size="168" font-weight="650" letter-spacing="-7">CodeDrobe</text>
+</svg>
