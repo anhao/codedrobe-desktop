@@ -52,9 +52,16 @@ npm run make
 - Windows builds produce a Squirrel Setup executable.
 - Current CI artifacts are unsigned and intended for testing. Public distribution will require Apple signing/notarization and Windows code signing.
 
-## Continuous integration
+## Releases
 
-The GitHub Actions workflow validates the application on Linux, then builds macOS ARM64 and Windows x64 artifacts. It runs on pushes and pull requests to `main`, `desktop-v*` tags, and manual dispatches.
+Desktop packages are built only when a semantic version tag such as `v1.0.0` is pushed. GitHub Actions validates the source, builds macOS ARM64 and Windows x64 packages, creates the matching GitHub Release, and uploads the DMG, ZIP, Setup executable, and Squirrel update files as release assets.
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The tag is the release version source: a `v1.0.0` tag produces application version `1.0.0`. Regular pushes and pull requests do not build distributable desktop packages.
 
 Repository: [anhao/codedrobe-desktop](https://github.com/anhao/codedrobe-desktop)
 

@@ -52,9 +52,16 @@ npm run make
 - Windows 构建生成 Squirrel Setup 安装程序。
 - 当前 CI 生成的是未签名测试包；正式公开分发前需要配置 Apple 签名、公证和 Windows 代码签名。
 
-## 自动构建
+## 版本发布
 
-GitHub Actions 会先在 Linux 上验证应用，然后构建 macOS ARM64 和 Windows x64 产物。工作流会在向 `main` 推送、向 `main` 提交 Pull Request、推送 `desktop-v*` 标签或手动触发时运行。
+只有推送 `v1.0.0` 这类语义化版本标签时，Desktop 才会触发发布构建。GitHub Actions 会先验证源码，再构建 macOS ARM64 和 Windows x64 安装包，创建对应的 GitHub Release，并将 DMG、ZIP、Setup 安装程序和 Squirrel 更新文件上传为 Release 制品。
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+标签是发布版本号的唯一来源：`v1.0.0` 会生成应用版本 `1.0.0`。普通 push 和 Pull Request 不再构建可分发安装包。
 
 Desktop 仓库：[anhao/codedrobe-desktop](https://github.com/anhao/codedrobe-desktop)
 

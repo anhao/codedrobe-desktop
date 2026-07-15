@@ -1,29 +1,23 @@
-name: CodeDrobe Desktop CI
+name: Release CodeDrobe Desktop
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
     tags:
-      - 'desktop-v*'
-  pull_request:
-    branches:
-      - main
+      - 'v*.*.*'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: desktop-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   NODE_VERSION: '22'
 
 jobs:
   validate:
-    name: Validate desktop and pinned core
+    name: Validate release source
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -37,6 +31,14 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: package-lock.json
+
+      - name: Validate semantic version tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]
+          echo "Building CodeDrobe Desktop $VERSION"
 
       - name: Install dependencies
         run: npm ci
@@ -64,6 +66,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Set application version from tag
+        shell: bash
+        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
+
       - name: Build DMG and ZIP
         run: npm run make -- --arch=arm64
 
@@ -81,10 +87,10 @@ jobs:
           test -f out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/THIRD_PARTY_NOTICES.md
           test -f out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/licenses/Apache-2.0.txt
 
-      - name: Upload macOS artifacts
+      - name: Upload macOS release assets
         uses: actions/upload-artifact@v4
         with:
-          name: CodeDrobe-macOS-arm64-${{ github.sha }}
+          name: CodeDrobe-macOS-arm64-${{ github.ref_name }}
           path: |
             out/make/**/*.dmg
             out/make/**/*.zip
@@ -110,6 +116,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Set application version from tag
+        shell: bash
+        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
 
       - name: Build Squirrel installer
         run: npm run make -- --arch=x64
@@ -139,13 +149,52 @@ jobs:
             }
           }
 
-      - name: Upload Windows artifacts
+      - name: Upload Windows release assets
         uses: actions/upload-artifact@v4
         with:
-          name: CodeDrobe-Windows-x64-${{ github.sha }}
+          name: CodeDrobe-Windows-x64-${{ github.ref_name }}
           path: |
             out/make/**/*.exe
             out/make/**/*.nupkg
             out/make/**/RELEASES
           if-no-files-found: error
           retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    needs:
+      - build-macos
+      - build-windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: List release assets
+        run: find release-assets -maxdepth 8 -type f -print
+
+      - name: Generate SHA-256 checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          find release-assets -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/SHA256SUMS.txt
+          mv /tmp/SHA256SUMS.txt release-assets/SHA256SUMS.txt
+
+      - name: Create release and upload assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -d '' ASSETS < <(find release-assets -type f -print0)
+          test "${#ASSETS[@]}" -gt 0
+          gh release create "$GITHUB_REF_NAME" "${ASSETS[@]}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "CodeDrobe Desktop $GITHUB_REF_NAME" \
+            --generate-notes \
+            --verify-tag
