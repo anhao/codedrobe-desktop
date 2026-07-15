@@ -4,19 +4,28 @@
 
 Website: [codedrobe.app](https://codedrobe.app)
 
-CodeDrobe Desktop is a beginner-friendly theme manager for the official Codex desktop app on macOS and Windows.
+CodeDrobe Desktop is an open-source Codex theme manager for the official Codex desktop app on macOS and Windows. Apply custom Codex themes with one click, import or export portable theme packages, and safely restore the native interface.
+
+![CodeDrobe Desktop theme manager showing three built-in Codex themes](docs/images/desktop.png)
 
 It provides theme management, one-click themed launch, `.codex-theme` import and export, safe restore, and a background tray watcher that keeps the selected theme active after navigation or renderer reloads.
 
 ## Features
 
-- Import, export, organize, and delete portable Codex themes. Desktop ships without bundled themes.
+- Start with three built-in themes: Dream / Fiona, Dilraba Rose, and KUN Stage.
+- Import, export, organize, and delete portable custom Codex themes.
 - Apply a theme and launch the official Codex app with one click.
 - Import and export portable `.codex-theme` files.
 - Restore the original Codex appearance safely.
 - Keep theme injection active from the system tray.
 - Switch between Chinese and English. The first launch follows an English or Chinese system locale and falls back to Chinese for other locales; later launches keep the user's choice.
 - Run on macOS and Windows without requiring a separate Node.js installation.
+
+## Codex theme gallery
+
+| KUN Stage | Dream / Fiona | Dilraba Rose |
+| --- | --- | --- |
+| ![Dark KUN Stage custom theme for the Codex desktop app](docs/images/codex-01.png) | ![Pink Dream Fiona custom theme for the Codex desktop app](docs/images/codex-02.png) | ![Rose Dilraba custom theme for the Codex desktop app](docs/images/codex-03.png) |
 
 ## Related Skill
 

@@ -4,19 +4,28 @@
 
 官方网站：[codedrobe.app](https://codedrobe.app)
 
-CodeDrobe Desktop 是一款面向普通用户的 Codex 主题管理软件，支持 macOS 和 Windows 上的官方 Codex 桌面应用。
+CodeDrobe Desktop 是一款开源的 Codex 主题管理软件，支持 macOS 和 Windows 上的官方 Codex 桌面应用。可以一键应用自定义 Codex 主题、导入导出主题包，并安全恢复原生界面。
+
+![CodeDrobe Desktop 主题管理器与三个内置 Codex 主题](docs/images/desktop.png)
 
 它提供主题管理、一键带主题启动、`.codex-theme` 导入导出、安全恢复，以及在页面跳转或渲染器重载后继续保持主题的托盘后台服务。
 
 ## 主要功能
 
-- 导入、导出、管理和删除可移植的 Codex 主题；Desktop 不再捆绑内置主题。
+- 内置 Dream / Fiona、Dilraba Rose 和 KUN Stage 三个主题，安装后即可使用。
+- 导入、导出、管理和删除可移植的自定义 Codex 主题。
 - 一键应用主题并启动官方 Codex 应用。
 - 导入和导出可移植的 `.codex-theme` 文件。
 - 安全恢复 Codex 原生界面。
 - 通过系统托盘持续保持主题注入。
 - 支持中文和英文切换；首次启动跟随系统的中文或英文设置，其他系统语言默认使用中文，之后保持用户选择。
 - 支持 macOS 和 Windows，不要求用户单独安装 Node.js。
+
+## Codex 主题效果
+
+| KUN Stage | Dream / Fiona | Dilraba Rose |
+| --- | --- | --- |
+| ![Codex 桌面应用 KUN Stage 深色主题](docs/images/codex-01.png) | ![Codex 桌面应用 Dream Fiona 粉色主题](docs/images/codex-02.png) | ![Codex 桌面应用 Dilraba Rose 玫瑰主题](docs/images/codex-03.png) |
 
 ## 相关 Skill
 
