@@ -1,10 +1,16 @@
-# CodeDrobe Desktop
+# CodeDrobe Desktop — OpenAI Codex Theme Manager
+
+[![Latest Release](https://img.shields.io/github/v/release/anhao/codedrobe-desktop?display_name=tag&sort=semver)](https://github.com/anhao/codedrobe-desktop/releases/latest)
+[![Release Build](https://github.com/anhao/codedrobe-desktop/actions/workflows/build.yml/badge.svg)](https://github.com/anhao/codedrobe-desktop/actions/workflows/build.yml)
+[![Downloads](https://img.shields.io/github/downloads/anhao/codedrobe-desktop/total)](https://github.com/anhao/codedrobe-desktop/releases)
+[![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
+[![macOS and Windows](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-6f4d62)](https://github.com/anhao/codedrobe-desktop/releases)
 
 [Chinese](README_zh.md)
 
-Website: [codedrobe.app](https://codedrobe.app)
+Website: [codedrobe.app](https://codedrobe.app) · [Download the latest release](https://github.com/anhao/codedrobe-desktop/releases/latest)
 
-CodeDrobe Desktop is an open-source Codex theme manager for the official Codex desktop app on macOS and Windows. Apply custom Codex themes with one click, import or export portable theme packages, and safely restore the native interface.
+CodeDrobe Desktop is an open-source theme manager and desktop customization tool for the official OpenAI Codex app on macOS and Windows. Apply custom Codex themes with one click, import or export portable `.codex-theme` packages, and safely restore the native interface.
 
 ![CodeDrobe Desktop theme manager showing three built-in Codex themes](docs/images/desktop.png)
 

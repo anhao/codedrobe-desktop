@@ -1,10 +1,16 @@
-# CodeDrobe Desktop
+# CodeDrobe Desktop — OpenAI Codex 主题管理器
+
+[![最新版本](https://img.shields.io/github/v/release/anhao/codedrobe-desktop?display_name=tag&sort=semver)](https://github.com/anhao/codedrobe-desktop/releases/latest)
+[![版本构建](https://github.com/anhao/codedrobe-desktop/actions/workflows/build.yml/badge.svg)](https://github.com/anhao/codedrobe-desktop/actions/workflows/build.yml)
+[![下载量](https://img.shields.io/github/downloads/anhao/codedrobe-desktop/total)](https://github.com/anhao/codedrobe-desktop/releases)
+[![许可证 MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
+[![macOS 与 Windows](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-6f4d62)](https://github.com/anhao/codedrobe-desktop/releases)
 
 [English](README.md)
 
-官方网站：[codedrobe.app](https://codedrobe.app)
+官方网站：[codedrobe.app](https://codedrobe.app) · [下载最新版本](https://github.com/anhao/codedrobe-desktop/releases/latest)
 
-CodeDrobe Desktop 是一款开源的 Codex 主题管理软件，支持 macOS 和 Windows 上的官方 Codex 桌面应用。可以一键应用自定义 Codex 主题、导入导出主题包，并安全恢复原生界面。
+CodeDrobe Desktop 是一款面向官方 OpenAI Codex 桌面应用的开源主题管理与桌面美化工具，支持 macOS 和 Windows。可以一键应用自定义 Codex 主题、导入导出 `.codex-theme` 主题包，并安全恢复原生界面。
 
 ![CodeDrobe Desktop 主题管理器与三个内置 Codex 主题](docs/images/desktop.png)
 

@@ -2,7 +2,7 @@
   "name": "codedrobe-desktop",
   "productName": "CodeDrobe",
   "version": "0.1.0",
-  "description": "Open-source Codex desktop theme manager for macOS and Windows with one-click themes and portable theme packages.",
+  "description": "Open-source theme manager and desktop customization tool for the OpenAI Codex app on macOS and Windows.",
   "author": "CodeDrobe",
   "license": "MPL-2.0",
   "main": ".vite/build/main.js",
