@@ -13,11 +13,21 @@ const api: CodeDrobeApi = {
   importTheme: () => ipcRenderer.invoke('theme:import'),
   exportTheme: (themeId: string) => ipcRenderer.invoke('theme:export', themeId),
   deleteTheme: (themeId: string) => ipcRenderer.invoke('theme:delete', themeId),
+  getMarketplace: (category?: string) => ipcRenderer.invoke('marketplace:list', category),
+  installMarketplaceTheme: (slug: string) => ipcRenderer.invoke('marketplace:install', slug),
+  checkForUpdates: () => ipcRenderer.invoke('updates:check'),
+  downloadUpdate: () => ipcRenderer.invoke('updates:download'),
+  openUpdateRelease: (url: string) => ipcRenderer.invoke('updates:open-release', url),
   showInFolder: (itemPath: string) => ipcRenderer.invoke('shell:show-item', itemPath),
   onRuntimeLog: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, line: string) => listener(line);
     ipcRenderer.on('runtime:log', handler);
     return () => ipcRenderer.removeListener('runtime:log', handler);
+  },
+  onUpdateDownloadProgress: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: number) => listener(progress);
+    ipcRenderer.on('updates:progress', handler);
+    return () => ipcRenderer.removeListener('updates:progress', handler);
   },
 };
 

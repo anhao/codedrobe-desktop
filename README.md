@@ -10,7 +10,7 @@
 
 Website: [codedrobe.app](https://codedrobe.app) · [Download the latest release](https://github.com/anhao/codedrobe-desktop/releases/latest)
 
-CodeDrobe Desktop is an open-source theme manager and desktop customization tool for the official OpenAI Codex app on macOS and Windows. Apply custom Codex themes with one click, import or export portable `.codex-theme` packages, and safely restore the native interface.
+CodeDrobe Desktop is an open-source theme manager and desktop customization tool for the official OpenAI Codex app on macOS and Windows. Browse the online CodeDrobe theme store, securely download and apply themes with one click, and safely restore the native interface.
 
 ![CodeDrobe Desktop theme manager showing three built-in Codex themes](docs/images/desktop.png)
 
@@ -18,7 +18,9 @@ It provides theme management, one-click themed launch, `.codex-theme` import and
 
 ## Features
 
-- Start with three built-in themes: Dream / Fiona, Dilraba Rose, and KUN Stage.
+- Browse bilingual categories and free themes from the online store at `codedrobe.app`.
+- Refresh the store on demand, see which installed themes have newer versions, and update them in place.
+- Verify every downloaded theme package against the marketplace SHA-256 record before importing it.
 - Import, export, organize, and delete portable custom Codex themes.
 - Apply a theme and launch the official Codex app with one click.
 - Import and export portable `.codex-theme` files.
@@ -26,6 +28,7 @@ It provides theme management, one-click themed launch, `.codex-theme` import and
 - Keep theme injection active from the system tray.
 - Switch between Chinese and English. The first launch follows an English or Chinese system locale and falls back to Chinese for other locales; later launches keep the user's choice.
 - Run on macOS and Windows without requiring a separate Node.js installation.
+- Check GitHub Releases for new versions and download the matching macOS or Windows installer from inside the app.
 
 ## Codex theme gallery
 
@@ -68,6 +71,8 @@ git push origin v1.0.0
 ```
 
 The tag is the release version source: a `v1.0.0` tag produces application version `1.0.0`. Regular pushes and pull requests do not build distributable desktop packages.
+
+The app checks the public [GitHub Releases](https://github.com/anhao/codedrobe-desktop/releases) endpoint at startup. The sidebar update card can also run a manual check. Updates are downloaded to the user's Downloads folder and the installer is opened. Automatic in-place macOS updates will remain disabled until builds are signed and notarized.
 
 Repository: [anhao/codedrobe-desktop](https://github.com/anhao/codedrobe-desktop)
 

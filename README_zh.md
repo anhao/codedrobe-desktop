@@ -10,7 +10,7 @@
 
 官方网站：[codedrobe.app](https://codedrobe.app) · [下载最新版本](https://github.com/anhao/codedrobe-desktop/releases/latest)
 
-CodeDrobe Desktop 是一款面向官方 OpenAI Codex 桌面应用的开源主题管理与桌面美化工具，支持 macOS 和 Windows。可以一键应用自定义 Codex 主题、导入导出 `.codex-theme` 主题包，并安全恢复原生界面。
+CodeDrobe Desktop 是一款面向官方 OpenAI Codex 桌面应用的开源主题管理与桌面美化工具，支持 macOS 和 Windows。可以直接浏览 CodeDrobe 在线主题商店，安全下载并一键应用主题，也可以随时恢复原生界面。
 
 ![CodeDrobe Desktop 主题管理器与三个内置 Codex 主题](docs/images/desktop.png)
 
@@ -18,7 +18,9 @@ CodeDrobe Desktop 是一款面向官方 OpenAI Codex 桌面应用的开源主题
 
 ## 主要功能
 
-- 内置 Dream / Fiona、Dilraba Rose 和 KUN Stage 三个主题，安装后即可使用。
+- 从 `codedrobe.app` 在线浏览支持中英文的主题分类和免费主题。
+- 支持手动刷新主题商店，识别已安装主题的新版本并直接覆盖更新。
+- 下载主题后先与市场记录中的 SHA-256 校验值核对，再导入本地。
 - 导入、导出、管理和删除可移植的自定义 Codex 主题。
 - 一键应用主题并启动官方 Codex 应用。
 - 导入和导出可移植的 `.codex-theme` 文件。
@@ -26,6 +28,7 @@ CodeDrobe Desktop 是一款面向官方 OpenAI Codex 桌面应用的开源主题
 - 通过系统托盘持续保持主题注入。
 - 支持中文和英文切换；首次启动跟随系统的中文或英文设置，其他系统语言默认使用中文，之后保持用户选择。
 - 支持 macOS 和 Windows，不要求用户单独安装 Node.js。
+- 从 GitHub Releases 检测新版本，并在软件内下载对应的 macOS 或 Windows 安装包。
 
 ## Codex 主题效果
 
@@ -68,6 +71,8 @@ git push origin v1.0.0
 ```
 
 标签是发布版本号的唯一来源：`v1.0.0` 会生成应用版本 `1.0.0`。普通 push 和 Pull Request 不再构建可分发安装包。
+
+软件启动后会检查公开的 [GitHub Releases](https://github.com/anhao/codedrobe-desktop/releases) 接口，也可以点击侧栏的软件更新卡片手动检查。发现新版本后会把对应安装包下载到系统“下载”目录并打开。macOS 在完成签名和公证前不会启用静默覆盖式自动更新。
 
 Desktop 仓库：[anhao/codedrobe-desktop](https://github.com/anhao/codedrobe-desktop)
 

@@ -6,7 +6,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { CodexService } from './main/codex-service';
 import { loadLocalePreference, saveLocalePreference } from './main/locale-preferences';
+import { MarketplaceService } from './main/marketplace-service';
 import { ThemeRepository } from './main/theme-repository';
+import { UpdateService } from './main/update-service';
 import { DEFAULT_LOCALE, getMainMessages, isAppLocale, setMainLocale, type AppLocale } from './shared/i18n';
 import type { LaunchRequest, RestoreRequest } from './shared/types';
 
@@ -15,6 +17,8 @@ let tray: Tray | null = null;
 let isQuitting = false;
 let themes: ThemeRepository;
 let codex: CodexService;
+let marketplace: MarketplaceService;
+let updates: UpdateService;
 let locale: AppLocale = DEFAULT_LOCALE;
 let userDataRoot = '';
 
@@ -99,6 +103,7 @@ function registerIpc(): void {
     themes: await themes.summaries(),
     status: await codex.status(),
     locale,
+    appVersion: app.getVersion(),
   }));
   ipcMain.handle('locale:set', async (_event, nextLocale: unknown) => {
     if (!isAppLocale(nextLocale)) throw new Error(getMainMessages().invalidLocale);
@@ -139,6 +144,23 @@ function registerIpc(): void {
     await themes.delete(themeId);
     return { themes: await themes.summaries(), status: await codex.status() };
   });
+  ipcMain.handle('marketplace:list', (_event, category?: string) => marketplace.list(category));
+  ipcMain.handle('marketplace:install', (_event, slug: string) => marketplace.install(slug));
+  ipcMain.handle('updates:check', () => updates.check());
+  ipcMain.handle('updates:download', async () => {
+    const result = await updates.download((progress) => mainWindow?.webContents.send('updates:progress', progress));
+    const openError = await shell.openPath(result.path);
+    if (openError) shell.showItemInFolder(result.path);
+    return result;
+  });
+  ipcMain.handle('updates:open-release', async (_event, value: unknown) => {
+    if (typeof value !== 'string') throw new Error('Invalid release URL.');
+    const url = new URL(value);
+    if (url.origin !== 'https://github.com' || !url.pathname.startsWith('/anhao/codedrobe-desktop/releases/')) {
+      throw new Error('The release URL is not trusted.');
+    }
+    await shell.openExternal(url.toString());
+  });
   ipcMain.handle('shell:show-item', (_event, itemPath: string) => shell.showItemInFolder(itemPath));
 }
 
@@ -162,6 +184,8 @@ app.whenReady().then(async () => {
   setMainLocale(locale);
   themes = new ThemeRepository(path.join(userDataRoot, 'themes'), path.join(root, 'themes'));
   await themes.initialize();
+  marketplace = new MarketplaceService(themes);
+  updates = new UpdateService(app.getVersion(), app.getPath('downloads'));
   codex = new CodexService(root, userDataRoot, themes);
   codex.setLogListener(sendLog);
   await codex.initialize();
