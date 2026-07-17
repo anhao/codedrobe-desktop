@@ -4,7 +4,7 @@ CodeDrobe Desktop includes or depends on third-party software. Those components 
 
 | Component | License | Project |
 | --- | --- | --- |
-| `@codedrobe/codex-core` | Apache-2.0 | https://github.com/anhao/codedrobe-codex-skill |
+| `@codedrobe/core` | Apache-2.0 | https://github.com/CodeDrobe/core |
 | Electron | MIT | https://github.com/electron/electron |
 | `electron-squirrel-startup` | MIT | https://github.com/mongodb-js/electron-squirrel-startup |
 | React | MIT | https://github.com/facebook/react |

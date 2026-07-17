@@ -1,34 +1,42 @@
-# CodeDrobe Desktop — OpenAI Codex Theme Manager
+# CodeDrobe Desktop — Theme Manager for AI Desktop Apps
 
-[![Latest Release](https://img.shields.io/github/v/release/anhao/codedrobe-desktop?display_name=tag&sort=semver)](https://github.com/anhao/codedrobe-desktop/releases/latest)
-[![Release Build](https://github.com/anhao/codedrobe-desktop/actions/workflows/build.yml/badge.svg)](https://github.com/anhao/codedrobe-desktop/actions/workflows/build.yml)
-[![Downloads](https://img.shields.io/github/downloads/anhao/codedrobe-desktop/total)](https://github.com/anhao/codedrobe-desktop/releases)
+[![Latest Release](https://img.shields.io/github/v/release/CodeDrobe/desktop?display_name=tag&sort=semver)](https://github.com/CodeDrobe/desktop/releases/latest)
+[![Release Build](https://github.com/CodeDrobe/desktop/actions/workflows/build.yml/badge.svg)](https://github.com/CodeDrobe/desktop/actions/workflows/build.yml)
+[![Downloads](https://img.shields.io/github/downloads/CodeDrobe/desktop/total)](https://github.com/CodeDrobe/desktop/releases)
 [![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
-[![macOS and Windows](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-6f4d62)](https://github.com/anhao/codedrobe-desktop/releases)
+[![macOS and Windows](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-6f4d62)](https://github.com/CodeDrobe/desktop/releases)
 
 [Chinese](README_zh.md)
 
-Website: [codedrobe.app](https://codedrobe.app) · [Download the latest release](https://github.com/anhao/codedrobe-desktop/releases/latest)
+Website: [codedrobe.app](https://codedrobe.app) · [Download the latest release](https://github.com/CodeDrobe/desktop/releases/latest)
 
-CodeDrobe Desktop is an open-source theme manager and desktop customization tool for the official OpenAI Codex app on macOS and Windows. Browse the online CodeDrobe theme store, securely download and apply themes with one click, and safely restore the native interface.
+CodeDrobe Desktop is an open-source theme manager for AI desktop apps — currently **OpenAI Codex** and **WorkBuddy** — on macOS and Windows. Browse the CodeDrobe theme store, apply a theme to any supported app with one click, and restore the native interface at any time. Themes only change appearance: your app installation and data stay untouched.
 
-![CodeDrobe Desktop theme manager showing three built-in Codex themes](docs/images/desktop.png)
+![CodeDrobe Desktop theme manager](docs/images/desktop.png)
 
-It provides theme management, one-click themed launch, `.codex-theme` import and export, safe restore, and a background tray watcher that keeps the selected theme active after navigation or renderer reloads.
+## What's new in v2
+
+Version 2 is a complete rebuild:
+
+- **New UI** built with Tailwind CSS + shadcn-style components, sharing the design language of [codedrobe.app](https://codedrobe.app).
+- **Multi-app support** on the new `@codedrobe/core` engine: one theme package can target several apps, and the detail drawer applies it per app (Codex, WorkBuddy).
+- **CodeDrobe account sign-in** (OAuth 2.0 PKCE through your system browser) with likes, a synced **Favorites** view, and share actions.
+- **Deep links**: `codedrobe://themes/apply?theme=<slug>&app=<id>` from the website installs and applies a theme after an in-app confirmation.
+- **Settings dialog** with categorized sections: display language, manual app-path override, per-app debug ports, and software updates.
+- **Smarter apply flow**: apps already running with a debug connection get live theme swaps; a restart is only requested the first time an app must be relaunched or when host appearance settings change.
 
 ## Features
 
-- Browse bilingual categories and free themes from the online store at `codedrobe.app`.
-- Refresh the store on demand, see which installed themes have newer versions, and update them in place.
-- Verify every downloaded theme package against the marketplace SHA-256 record before importing it.
-- Import, export, organize, and delete portable custom Codex themes.
-- Apply a theme and launch the official Codex app with one click.
-- Import and export portable `.codex-theme` files.
-- Restore the original Codex appearance safely.
-- Keep theme injection active from the system tray.
-- Switch between Chinese and English. The first launch follows an English or Chinese system locale and falls back to Chinese for other locales; later launches keep the user's choice.
-- Run on macOS and Windows without requiring a separate Node.js installation.
-- Check GitHub Releases for new versions and download the matching macOS or Windows installer from inside the app.
+- Browse bilingual categories and free themes from the online store, with search, sorting, and per-app filters.
+- See which installed themes have newer versions and update them in place.
+- Every download is verified against the marketplace SHA-256 record before it is imported.
+- Sign in with your CodeDrobe account to like themes and browse your favorites; publishing and profile editing open the website.
+- Apply a theme to a specific app from the detail drawer — running apps switch live, stopped apps are launched with the theme.
+- Restore any app's original appearance from the sidebar status list or the system tray.
+- Import and export portable `.codedrobe-theme` packages (legacy `.codex-theme` files are converted on import).
+- Configure app install locations manually when auto-detection misses (mainly Windows) and change per-app debug ports when the defaults are occupied.
+- Switch between Chinese and English; the first launch follows the system locale.
+- Check GitHub Releases for new versions and download the matching installer from inside the app.
 
 ## Codex theme gallery
 
@@ -36,9 +44,17 @@ It provides theme management, one-click themed launch, `.codex-theme` import and
 | --- | --- | --- |
 | ![Dark KUN Stage custom theme for the Codex desktop app](docs/images/codex-01.png) | ![Pink Dream Fiona custom theme for the Codex desktop app](docs/images/codex-02.png) | ![Rose Dilraba custom theme for the Codex desktop app](docs/images/codex-03.png) |
 
-## Related Skill
+## Account and permissions
 
-Theme creation, AI customization, command-line workflows, and the shared theme format are maintained in [anhao/codedrobe-codex-skill](https://github.com/anhao/codedrobe-codex-skill).
+Signing in opens your system browser for an OAuth 2.0 Authorization Code + PKCE flow against `codedrobe.app`; the app never sees your password. Requested scopes are shown on the consent page and can be revoked at any time from the website's **Authorized apps** page. Refresh tokens are stored encrypted with the operating system keychain (Electron `safeStorage`).
+
+## Deep links
+
+The website's "Open in app" actions use the `codedrobe://` scheme. Every request shows a confirmation dialog before anything is installed or applied. On macOS the scheme is registered by the packaged app; during development, pass the URL as a launch argument instead:
+
+```bash
+npm start -- -- "codedrobe://themes/apply?theme=<slug>&app=codex"
+```
 
 ## Local development
 
@@ -47,7 +63,9 @@ npm install
 npm start
 ```
 
-The Desktop app uses the pinned `@codedrobe/codex-core` package stored in `vendor/`. Development and CI therefore use the same Core version without requiring a sibling repository checkout.
+Point the app at a local website instance with `CODEDROBE_API_BASE=http://localhost:4173 npm start`.
+
+The Desktop app uses the pinned `@codedrobe/core` package stored in `vendor/`. Development and CI therefore use the same Core version without requiring a sibling repository checkout.
 
 ## Test and package
 
@@ -55,26 +73,16 @@ The Desktop app uses the pinned `@codedrobe/codex-core` package stored in `vendo
 npm run check
 npm run package
 npm run make
+npm run make:windows:installers
 ```
 
 - macOS builds produce DMG and ZIP artifacts.
-- Windows builds produce a Squirrel Setup executable.
-- Current CI artifacts are unsigned and intended for testing. Public distribution will require Apple signing/notarization and Windows code signing.
+- Windows release builds produce a WiX MSI installer, an NSIS Setup executable, and a Portable executable. Run `npm run make -- --arch=x64` first on Windows so the packaged application and MSI exist before running `npm run make:windows:installers`.
 
-## Releases
+## Related projects
 
-Desktop packages are built only when a semantic version tag such as `v1.0.0` is pushed. GitHub Actions validates the source, builds macOS ARM64 and Windows x64 packages, creates the matching GitHub Release, and uploads the DMG, ZIP, Setup executable, and Squirrel update files as release assets.
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-The tag is the release version source: a `v1.0.0` tag produces application version `1.0.0`. Regular pushes and pull requests do not build distributable desktop packages.
-
-The app checks the public [GitHub Releases](https://github.com/anhao/codedrobe-desktop/releases) endpoint at startup. The sidebar update card can also run a manual check. Updates are downloaded to the user's Downloads folder and the installer is opened. Automatic in-place macOS updates will remain disabled until builds are signed and notarized.
-
-Repository: [anhao/codedrobe-desktop](https://github.com/anhao/codedrobe-desktop)
+- [CodeDrobe/core](https://github.com/CodeDrobe/core) — the Apache-2.0 theme engine and `codedrobe` CLI shared by Desktop and the Skill (theme format, app adapters, apply/restore).
+- [CodeDrobe/skills](https://github.com/CodeDrobe/skills) — AI skills for creating and customizing themes from your coding agent.
 
 ## License
 

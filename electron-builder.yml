@@ -1,0 +1,27 @@
+appId: app.codedrobe.desktop
+productName: CodeDrobe
+
+directories:
+  output: out/make/electron-builder
+
+win:
+  executableName: CodeDrobe
+  icon: assets/icon.ico
+  target:
+    - nsis
+    - portable
+
+nsis:
+  artifactName: CodeDrobe-${version}-${arch}-Setup.${ext}
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  runAfterFinish: true
+
+portable:
+  artifactName: CodeDrobe-${version}-${arch}-Portable.${ext}
+  requestExecutionLevel: user
+
+publish: null

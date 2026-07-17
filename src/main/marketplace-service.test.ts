@@ -1,94 +1,69 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { createHash } from 'node:crypto';
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { MarketplaceTheme, ThemePackage } from '../shared/types';
-import { MarketplaceService, normalizeMarketplaceUrl } from './marketplace-service';
-import { ThemeRepository } from './theme-repository';
+import { describe, expect, it } from 'vitest';
+import { MarketplaceService } from './marketplace-service';
+import type { ThemeLibrary } from './theme-library';
 
-let root = '';
+const BASE = 'https://codedrobe.test';
 
-beforeEach(async () => { root = await fs.mkdtemp(path.join(os.tmpdir(), 'codedrobe-market-')); });
-afterEach(async () => { await fs.rm(root, { recursive: true, force: true }); });
-
-function fixture() {
-  const bundle: ThemePackage = {
-    format: 'codex-theme', schemaVersion: 1, exportedAt: new Date().toISOString(),
-    manifest: { schemaVersion: 1, id: 'graphite-pro', displayName: 'Graphite Pro', version: '1.0.0', css: 'theme.css', art: null },
-    css: ':root { --accent: #d4a85f; }',
-  };
-  const bytes = Buffer.from(JSON.stringify(bundle));
-  const theme: MarketplaceTheme = {
-    id: 'theme_graphite_pro', slug: 'graphite-pro', name: { en: 'Graphite Pro', zh: '石墨专业版' },
-    description: { en: 'Focused.', zh: '专注。' }, version: '1.0.0', categories: [],
-    previewUrl: '/api/v1/themes/graphite-pro/preview', downloadUrl: '/api/v1/themes/graphite-pro/download',
+function theme(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'theme_1',
+    slug: 'dream',
+    name: { en: 'Dream', zh: '梦境' },
+    description: { en: null, zh: null },
+    version: '1.0.0',
+    categories: [{ slug: 'minimal', name: { en: 'Minimal', zh: '极简' }, primary: true }],
+    previewUrl: null,
+    coverUrl: '/api/v1/themes/dream/cover',
+    downloadUrl: '/api/v1/themes/dream/download',
     price: { currency: 'usd', unitAmount: 0, free: true },
-    package: { sizeBytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') },
-    publishedAt: new Date().toISOString(),
+    package: { sizeBytes: 1024, sha256: 'a'.repeat(64) },
+    publishedAt: '2026-07-17T00:00:00Z',
+    supportedApps: ['codex'],
+    author: {
+      handle: 'anhao',
+      displayName: 'AnHao',
+      // External https avatars (GitHub) must pass through, not fail the listing.
+      avatarUrl: 'https://avatars.githubusercontent.com/u/1?v=4',
+    },
+    likeCount: 3,
+    downloadCount: 9,
+    ...overrides,
   };
-  return { bytes, theme };
 }
 
-function fetcher(theme: MarketplaceTheme, bytes: Buffer): typeof fetch {
-  return (async (input: string | URL | Request) => {
-    const url = new URL(String(input));
-    if (url.pathname === '/api/v1/themes/graphite-pro') return Response.json({ data: theme });
-    if (url.pathname === '/api/v1/themes/graphite-pro/download') return new Response(new Uint8Array(bytes), { headers: { 'content-length': String(bytes.length) } });
-    throw new Error(`Unexpected URL: ${url.toString()}`);
-  }) as typeof fetch;
-}
-
-describe('MarketplaceService', () => {
-  it('只接受主题商店同源链接', () => {
-    expect(normalizeMarketplaceUrl('/api/v1/themes')).toBe('https://codedrobe.app/api/v1/themes');
-    expect(() => normalizeMarketplaceUrl('https://tracker.example/theme')).toThrow('untrusted');
-  });
-
-  it('下载、校验并导入免费主题', async () => {
-    const { bytes, theme } = fixture();
-    const repository = new ThemeRepository(path.join(root, 'themes'));
-    await repository.initialize();
-    const service = new MarketplaceService(repository, 'https://codedrobe.app', fetcher(theme, bytes));
-
-    const result = await service.install('graphite-pro');
-
-    expect(result.theme).toMatchObject({ id: 'graphite-pro', source: 'imported' });
-    expect(result.themes).toHaveLength(1);
-  });
-
-  it('SHA-256 不匹配时拒绝导入', async () => {
-    const { bytes, theme } = fixture();
-    theme.package.sha256 = '0'.repeat(64);
-    const repository = new ThemeRepository(path.join(root, 'themes'));
-    await repository.initialize();
-    const service = new MarketplaceService(repository, 'https://codedrobe.app', fetcher(theme, bytes));
-
-    await expect(service.install('graphite-pro')).rejects.toThrow('SHA-256');
-    await expect(repository.summaries()).resolves.toEqual([]);
-  });
-
-  it('刷新商店时绕过缓存并返回最新目录', async () => {
-    const { bytes, theme } = fixture();
-    const repository = new ThemeRepository(path.join(root, 'themes'));
-    await repository.initialize();
-    const requests: Array<{ url: URL; headers: Headers }> = [];
-    const catalogFetcher = (async (input: string | URL | Request, init?: RequestInit) => {
-      const url = new URL(String(input));
-      requests.push({ url, headers: new Headers(init?.headers) });
-      if (url.pathname === '/api/v1/categories') return Response.json({ data: [] });
-      if (url.pathname === '/api/v1/themes') return Response.json({ data: [theme] });
-      throw new Error(`Unexpected URL: ${url.toString()}`);
-    }) as typeof fetch;
-    const service = new MarketplaceService(repository, 'https://codedrobe.app', catalogFetcher);
-
-    await expect(service.list()).resolves.toMatchObject({ themes: [{ slug: 'graphite-pro' }] });
-    expect(requests).toHaveLength(2);
-    for (const request of requests) {
-      expect(request.url.searchParams.get('_refresh')).toMatch(/^\d+$/);
-      expect(request.headers.get('cache-control')).toBe('no-cache');
+function service(themes: unknown[]) {
+  const fetcher = (async (input: URL | RequestInfo) => {
+    const url = String(input);
+    if (url.includes('/api/v1/themes')) {
+      return Response.json({ data: themes, meta: { total: themes.length, nextCursor: null } });
     }
+    return Response.json({ data: [] });
+  }) as typeof fetch;
+  return new MarketplaceService(null as unknown as ThemeLibrary, BASE, fetcher);
+}
+
+describe('marketplace URL policy', () => {
+  it('resolves same-origin display URLs and passes external https avatars through', async () => {
+    const page = await service([theme()]).list();
+    expect(page.themes).toHaveLength(1);
+    const item = page.themes[0];
+    expect(item.coverUrl).toBe(`${BASE}/api/v1/themes/dream/cover`);
+    expect(item.downloadUrl).toBe(`${BASE}/api/v1/themes/dream/download`);
+    expect(item.author?.avatarUrl).toBe('https://avatars.githubusercontent.com/u/1?v=4');
+  });
+
+  it('drops non-https external display URLs instead of failing', async () => {
+    const page = await service([
+      theme({ author: { handle: 'x', displayName: 'X', avatarUrl: 'http://evil.example/a.png' } }),
+    ]).list();
+    expect(page.themes[0].author?.avatarUrl).toBeNull();
+  });
+
+  it('still rejects cross-origin download URLs', async () => {
+    await expect(
+      service([theme({ downloadUrl: 'https://evil.example/steal.codedrobe-theme' })]).list(),
+    ).rejects.toThrow(/untrusted/i);
   });
 });

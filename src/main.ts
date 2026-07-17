@@ -1,34 +1,33 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, shell, Tray } from 'electron';
-import squirrelStartup from 'electron-squirrel-startup';
-import fs from 'node:fs/promises';
 import path from 'node:path';
-import { CodexService } from './main/codex-service';
+import { THEME_EXTENSION } from '@codedrobe/core';
+import { AuthService } from './main/auth-service';
+import { CoreService } from './main/core-service';
+import { DeepLinkManager, extractDeepLinkFromArgv } from './main/deep-link';
 import { loadLocalePreference, saveLocalePreference } from './main/locale-preferences';
 import { MarketplaceService } from './main/marketplace-service';
-import { ThemeRepository } from './main/theme-repository';
+import { SettingsService } from './main/settings-service';
+import { ThemeLibrary } from './main/theme-library';
 import { UpdateService } from './main/update-service';
 import { DEFAULT_LOCALE, getMainMessages, isAppLocale, setMainLocale, type AppLocale } from './shared/i18n';
-import type { LaunchRequest, RestoreRequest } from './shared/types';
+import { APP_IDS, isAppId, type AppId, type ApplyRequest, type MarketplaceQuery, type SettingsUpdateResult } from './shared/types';
+
+const API_BASE = (process.env.CODEDROBE_API_BASE ?? 'https://codedrobe.app').replace(/\/+$/, '');
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
-let themes: ThemeRepository;
-let codex: CodexService;
+let library: ThemeLibrary;
+let core: CoreService;
 let marketplace: MarketplaceService;
 let updates: UpdateService;
+let auth: AuthService;
+let settings: SettingsService;
+const deepLinks = new DeepLinkManager();
 let locale: AppLocale = DEFAULT_LOCALE;
 let userDataRoot = '';
-
-if (squirrelStartup) app.quit();
-
-function runtimeRoot(): string {
-  return app.isPackaged
-    ? process.resourcesPath
-    : path.resolve(app.getAppPath(), 'node_modules', '@codedrobe', 'codex-core');
-}
 
 function brandingRoot(): string {
   return app.isPackaged
@@ -38,6 +37,21 @@ function brandingRoot(): string {
 
 function sendLog(line: string): void {
   mainWindow?.webContents.send('runtime:log', line);
+}
+
+function registerProtocol(): void {
+  if (app.isPackaged) {
+    app.setAsDefaultProtocolClient('codedrobe');
+    return;
+  }
+  // The execPath/args form only works on Windows/Linux. On macOS the call
+  // registers the shared dev bundle id (com.github.Electron), so Launch
+  // Services routes codedrobe:// to a RANDOM Electron.app on disk — never
+  // register there in dev. Test macOS deep links with a packaged build, or
+  // pass the URL as a launch argument: npm start -- -- "codedrobe://...".
+  if (process.platform !== 'darwin' && process.argv[1]) {
+    app.setAsDefaultProtocolClient('codedrobe', process.execPath, [path.resolve(process.argv[1])]);
+  }
 }
 
 async function createWindow(): Promise<void> {
@@ -50,7 +64,7 @@ async function createWindow(): Promise<void> {
     title: 'CodeDrobe',
     icon: path.join(brandingRoot(), 'icon.png'),
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    backgroundColor: '#17131a',
+    backgroundColor: '#ffffff',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -67,6 +81,13 @@ async function createWindow(): Promise<void> {
   });
   mainWindow.once('ready-to-show', () => mainWindow?.show());
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  mainWindow.webContents.on('did-finish-load', () => {
+    deepLinks.setSink((request) => {
+      mainWindow?.show();
+      mainWindow?.focus();
+      mainWindow?.webContents.send('deeplink:apply', request);
+    });
+  });
 
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     await mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -82,7 +103,7 @@ function updateTrayMenu(): void {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: copy.trayOpen, click: () => { mainWindow?.show(); mainWindow?.focus(); } },
     { type: 'separator' },
-    { label: copy.trayRestore, click: () => void codex.restore(false).catch((error) => sendLog(String(error))) },
+    { label: copy.trayRestore, click: () => void core.restoreAll().catch((error) => sendLog(String(error))) },
     { type: 'separator' },
     { label: copy.trayQuit, click: () => { isQuitting = true; app.quit(); } },
   ]));
@@ -98,12 +119,21 @@ function createTray(): void {
   tray.on('double-click', () => mainWindow?.show());
 }
 
+function settingsDto() {
+  const defaultPorts = Object.fromEntries(
+    APP_IDS.map((appId) => [appId, core.defaultPortFor(appId)]),
+  ) as Record<AppId, number>;
+  return settings.toDto(defaultPorts);
+}
+
 function registerIpc(): void {
   ipcMain.handle('app:bootstrap', async () => ({
-    themes: await themes.summaries(),
-    status: await codex.status(),
+    themes: await library.summaries(),
+    status: await core.status(),
     locale,
     appVersion: app.getVersion(),
+    auth: await auth.status(),
+    webBaseUrl: API_BASE,
   }));
   ipcMain.handle('locale:set', async (_event, nextLocale: unknown) => {
     if (!isAppLocale(nextLocale)) throw new Error(getMainMessages().invalidLocale);
@@ -112,40 +142,108 @@ function registerIpc(): void {
     await saveLocalePreference(userDataRoot, locale);
     updateTrayMenu();
   });
-  ipcMain.handle('system:status', () => codex.status());
-  ipcMain.handle('theme:launch', (_event, request: LaunchRequest) => codex.launch(request));
-  ipcMain.handle('theme:restore', (_event, request?: RestoreRequest) => codex.restore(Boolean(request?.restoreBaseTheme)));
+  ipcMain.handle('system:status', () => core.status());
+  ipcMain.handle('theme:apply', (_event, request: ApplyRequest) => {
+    if (!request || !isAppId(request.appId) || typeof request.themeId !== 'string') {
+      throw new Error('Invalid apply request.');
+    }
+    return core.apply(request);
+  });
+  ipcMain.handle('theme:restore', (_event, appId: unknown) => {
+    if (!isAppId(appId)) throw new Error('Invalid app id.');
+    return core.restore(appId);
+  });
   ipcMain.handle('theme:import', async () => {
     const copy = getMainMessages();
     const selection = await dialog.showOpenDialog(mainWindow!, {
       title: copy.importDialogTitle,
       properties: ['openFile'],
-      filters: [{ name: copy.themePackageFilter, extensions: ['codex-theme'] }],
+      filters: [{ name: copy.themePackageFilter, extensions: ['codedrobe-theme', 'codex-theme'] }],
     });
     if (selection.canceled || !selection.filePaths[0]) return { canceled: true };
-    const theme = await themes.importPackage(selection.filePaths[0]);
+    const theme = await library.importPackage(selection.filePaths[0]);
     return { canceled: false, path: selection.filePaths[0], theme };
   });
   ipcMain.handle('theme:export', async (_event, themeId: string) => {
     const copy = getMainMessages();
-    const bundle = await themes.exportPackage(themeId);
+    const entry = await library.find(themeId);
     const selection = await dialog.showSaveDialog(mainWindow!, {
       title: copy.exportDialogTitle,
-      defaultPath: `${bundle.manifest.id}-${bundle.manifest.version}.codex-theme`,
-      filters: [{ name: copy.themePackageFilter, extensions: ['codex-theme'] }],
+      defaultPath: `${entry.bundle.theme.id}-${entry.bundle.theme.version}${THEME_EXTENSION}`,
+      filters: [{ name: copy.themePackageFilter, extensions: ['codedrobe-theme'] }],
     });
     if (selection.canceled || !selection.filePath) return { canceled: true };
-    await fs.writeFile(selection.filePath, `${JSON.stringify(bundle, null, 2)}\n`, 'utf8');
+    await library.exportPackage(themeId, selection.filePath);
     return { canceled: false, path: selection.filePath };
   });
   ipcMain.handle('theme:delete', async (_event, themeId: string) => {
-    const status = await codex.status();
-    if (status.activeThemeId === themeId) await codex.restore(true);
-    await themes.delete(themeId);
-    return { themes: await themes.summaries(), status: await codex.status() };
+    const status = await core.status();
+    for (const appStatus of status.apps) {
+      if (appStatus.activeThemeId === themeId) await core.restore(appStatus.appId);
+    }
+    await library.delete(themeId);
+    return { themes: await library.summaries(), status: await core.status() };
   });
-  ipcMain.handle('marketplace:list', (_event, category?: string) => marketplace.list(category));
+  ipcMain.handle('marketplace:list', (_event, query?: MarketplaceQuery) => marketplace.list(query ?? {}));
+  ipcMain.handle('marketplace:categories', () => marketplace.categories());
+  ipcMain.handle('marketplace:get', (_event, slug: string) => marketplace.getTheme(slug));
   ipcMain.handle('marketplace:install', (_event, slug: string) => marketplace.install(slug));
+  ipcMain.handle('marketplace:like', (_event, slug: string, liked: boolean) => marketplace.setLike(slug, Boolean(liked)));
+  ipcMain.handle('auth:login', () => auth.login({
+    onAuthorizeUrl: (url) => mainWindow?.webContents.send('auth:login-url', url),
+    // The browser owns the foreground during authorization; pull the app back
+    // the moment the loopback callback lands.
+    onCallback: () => {
+      mainWindow?.show();
+      mainWindow?.focus();
+      app.focus({ steal: true });
+    },
+  }));
+  ipcMain.handle('auth:login-open', () => auth.reopenAuthorizeUrl());
+  ipcMain.handle('auth:login-cancel', () => auth.cancelLogin());
+  ipcMain.handle('auth:logout', () => auth.logout());
+  ipcMain.handle('auth:status', () => auth.status());
+  ipcMain.handle('settings:get', () => settingsDto());
+  ipcMain.handle('settings:pick-app-path', async (_event, appId: unknown): Promise<SettingsUpdateResult & { canceled: boolean }> => {
+    if (!isAppId(appId)) throw new Error('Invalid app id.');
+    const copy = getMainMessages();
+    const selection = await dialog.showOpenDialog(mainWindow!, {
+      title: copy.pickAppDialogTitle(appId),
+      properties: ['openFile'],
+      filters: process.platform === 'win32'
+        ? [{ name: 'Programs', extensions: ['exe'] }]
+        : [{ name: 'Applications', extensions: ['app'] }],
+    });
+    if (selection.canceled || !selection.filePaths[0]) {
+      return { canceled: true, settings: settingsDto(), status: await core.status() };
+    }
+    await settings.setAppPath(appId, selection.filePaths[0]);
+    return { canceled: false, settings: settingsDto(), status: await core.status() };
+  });
+  ipcMain.handle('settings:clear-app-path', async (_event, appId: unknown): Promise<SettingsUpdateResult> => {
+    if (!isAppId(appId)) throw new Error('Invalid app id.');
+    await settings.setAppPath(appId, null);
+    return { settings: settingsDto(), status: await core.status() };
+  });
+  ipcMain.handle('settings:set-app-port', async (_event, appId: unknown, port: unknown): Promise<SettingsUpdateResult> => {
+    if (!isAppId(appId)) throw new Error('Invalid app id.');
+    if (port !== null && (!Number.isInteger(port) || (port as number) < 1024 || (port as number) > 65535)) {
+      throw new Error('INVALID_PORT');
+    }
+    await settings.setAppPort(appId, port as number | null);
+    return { settings: settingsDto(), status: await core.status() };
+  });
+  ipcMain.handle('web:open-page', async (_event, page: unknown) => {
+    // Whitelisted website destinations only — the renderer never passes URLs.
+    const pages: Record<string, string> = { privacy: '/privacy', terms: '/terms', account: '/account' };
+    if (typeof page !== 'string' || !(page in pages)) throw new Error('Invalid website page.');
+    const prefix = locale === 'zh-CN' ? '/zh' : '';
+    await shell.openExternal(`${API_BASE}${prefix}${pages[page]}`);
+  });
+  ipcMain.handle('share:x', async (_event, text: unknown) => {
+    if (typeof text !== 'string' || !text || text.length > 1000) throw new Error('Invalid share text.');
+    await shell.openExternal(`https://x.com/intent/post?text=${encodeURIComponent(text)}`);
+  });
   ipcMain.handle('updates:check', () => updates.check());
   ipcMain.handle('updates:download', async () => {
     const result = await updates.download((progress) => mainWindow?.webContents.send('updates:progress', progress));
@@ -156,7 +254,7 @@ function registerIpc(): void {
   ipcMain.handle('updates:open-release', async (_event, value: unknown) => {
     if (typeof value !== 'string') throw new Error('Invalid release URL.');
     const url = new URL(value);
-    if (url.origin !== 'https://github.com' || !url.pathname.startsWith('/anhao/codedrobe-desktop/releases/')) {
+    if (url.origin !== 'https://github.com' || !url.pathname.startsWith('/CodeDrobe/desktop/releases/')) {
       throw new Error('The release URL is not trusted.');
     }
     await shell.openExternal(url.toString());
@@ -167,29 +265,48 @@ function registerIpc(): void {
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) app.quit();
 
-app.on('second-instance', () => {
+app.on('second-instance', (_event, argv) => {
   mainWindow?.show();
   mainWindow?.focus();
+  const url = extractDeepLinkFromArgv(argv);
+  if (url) deepLinks.handleUrl(url);
+});
+
+// macOS deep links arrive via open-url (may fire before ready).
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  deepLinks.handleUrl(url);
 });
 
 app.whenReady().then(async () => {
   app.setName('CodeDrobe');
+  registerProtocol();
   if (process.platform === 'darwin' && !app.isPackaged) {
     const dockIcon = nativeImage.createFromPath(path.join(app.getAppPath(), 'assets', 'icon.png'));
     if (!dockIcon.isEmpty()) app.dock?.setIcon(dockIcon);
   }
-  const root = runtimeRoot();
   userDataRoot = app.getPath('userData');
   locale = await loadLocalePreference(userDataRoot, app.getLocale());
   setMainLocale(locale);
-  themes = new ThemeRepository(path.join(userDataRoot, 'themes'), path.join(root, 'themes'));
-  await themes.initialize();
-  marketplace = new MarketplaceService(themes);
-  updates = new UpdateService(app.getVersion(), app.getPath('downloads'));
-  codex = new CodexService(root, userDataRoot, themes);
-  codex.setLogListener(sendLog);
-  await codex.initialize();
+  library = new ThemeLibrary(path.join(userDataRoot, 'themes'));
+  await library.initialize();
+  const brandIcon = nativeImage.createFromPath(path.join(brandingRoot(), 'icon.png'));
+  const brandIconDataUrl = brandIcon.isEmpty()
+    ? null
+    : brandIcon.resize({ width: 144, height: 144 }).toDataURL();
+  auth = new AuthService(API_BASE, path.join(userDataRoot, 'credentials.bin'), fetch, brandIconDataUrl);
+  await auth.initialize();
+  marketplace = new MarketplaceService(library, API_BASE, fetch, () => auth.getAccessToken());
+  updates = new UpdateService(app.getVersion(), app.getPath('downloads'), API_BASE);
+  settings = new SettingsService(path.join(userDataRoot, 'settings.json'));
+  await settings.initialize();
+  core = new CoreService(library, path.join(userDataRoot, 'manager-state.json'), settings);
+  core.setLogListener(sendLog);
+  await core.initialize();
   registerIpc();
+  // Windows cold-start deep link arrives in argv.
+  const initialDeepLink = extractDeepLinkFromArgv(process.argv);
+  if (initialDeepLink) deepLinks.handleUrl(initialDeepLink);
   await createWindow();
   createTray();
 }).catch((error) => {
@@ -204,7 +321,6 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
   isQuitting = true;
-  codex?.shutdown();
 });
 
 app.on('window-all-closed', () => {

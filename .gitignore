@@ -8,3 +8,6 @@ coverage/
 .env.*
 *.p12
 *.p8
+
+# Standalone vite build output (verification runs)
+dist/

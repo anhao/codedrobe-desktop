@@ -9,7 +9,12 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "types": ["node", "vite/client"],
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/ui/*"],
+      "@shared/*": ["src/shared/*"]
+    }
   },
   "include": ["src", "forge.config.ts", "vite.*.config.ts"]
 }

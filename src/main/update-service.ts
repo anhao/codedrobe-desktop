@@ -11,23 +11,26 @@ import { compareVersions, normalizeVersion } from '../shared/version';
 
 export { compareVersions, normalizeVersion } from '../shared/version';
 
-const RELEASE_API = 'https://api.github.com/repos/anhao/codedrobe-desktop/releases/latest';
-const DOWNLOAD_PREFIX = 'https://github.com/anhao/codedrobe-desktop/releases/download/';
+const DOWNLOAD_PREFIX = 'https://github.com/CodeDrobe/desktop/releases/download/';
 const MAX_UPDATE_BYTES = 500 * 1024 * 1024;
 
 type FetchLike = typeof fetch;
 
-interface GitHubAsset {
+/** website /api/v1/releases/latest asset (app/release-types.ts ReleaseAsset). */
+interface ReleaseAsset {
+  kind: string;
   name: string;
-  size: number;
-  digest?: string | null;
-  browser_download_url: string;
+  url: string;
+  sizeBytes: number;
+  sha256: string | null;
 }
 
-interface GitHubRelease {
-  tag_name: string;
-  html_url: string;
-  assets: GitHubAsset[];
+interface DesktopRelease {
+  version: string;
+  tag: string;
+  releaseUrl: string;
+  publishedAt: string;
+  assets: ReleaseAsset[];
 }
 
 function trustedDownloadUrl(value: string): boolean {
@@ -35,26 +38,29 @@ function trustedDownloadUrl(value: string): boolean {
 }
 
 export function selectReleaseAsset(
-  assets: GitHubAsset[],
+  assets: ReleaseAsset[],
   platform: NodeJS.Platform = process.platform,
   arch: string = process.arch,
 ): UpdateAsset | null {
-  const valid = assets.filter((asset) => asset.size > 0 && asset.size <= MAX_UPDATE_BYTES && trustedDownloadUrl(asset.browser_download_url));
-  let selected: GitHubAsset | undefined;
+  const valid = assets.filter((asset) =>
+    asset.sizeBytes > 0 && asset.sizeBytes <= MAX_UPDATE_BYTES && trustedDownloadUrl(asset.url));
+  let selected: ReleaseAsset | undefined;
   if (platform === 'win32') {
-    selected = valid.find((asset) => /setup\.exe$/i.test(asset.name));
+    selected = valid.find((asset) => asset.kind === 'windows-setup')
+      ?? valid.find((asset) => /setup\.exe$/i.test(asset.name));
   } else if (platform === 'darwin') {
     const archPattern = arch === 'arm64' ? /arm64|aarch64/i : /x64|x86_64/i;
-    selected = valid.find((asset) => /\.dmg$/i.test(asset.name) && archPattern.test(asset.name))
-      ?? valid.find((asset) => /\.dmg$/i.test(asset.name))
+    const dmgs = valid.filter((asset) => asset.kind === 'mac-dmg' || /\.dmg$/i.test(asset.name));
+    selected = dmgs.find((asset) => archPattern.test(asset.name))
+      ?? dmgs[0]
       ?? valid.find((asset) => /\.zip$/i.test(asset.name) && archPattern.test(asset.name));
   }
   if (!selected) return null;
-  const digest = selected.digest?.match(/^sha256:([a-f0-9]{64})$/i)?.[1]?.toLowerCase() ?? null;
+  const digest = selected.sha256?.match(/^(?:sha256:)?([a-f0-9]{64})$/i)?.[1]?.toLowerCase() ?? null;
   return {
     name: selected.name,
-    url: selected.browser_download_url,
-    sizeBytes: selected.size,
+    url: selected.url,
+    sizeBytes: selected.sizeBytes,
     sha256: digest,
   };
 }
@@ -65,6 +71,7 @@ export class UpdateService {
   constructor(
     private readonly currentVersion: string,
     private readonly downloadsRoot: string,
+    private readonly baseUrl = 'https://codedrobe.app',
     private readonly fetcher: FetchLike = fetch,
     private readonly platform: NodeJS.Platform = process.platform,
     private readonly arch: string = process.arch,
@@ -73,10 +80,9 @@ export class UpdateService {
   async check(): Promise<UpdateInfo> {
     const checkedAt = new Date().toISOString();
     try {
-      const response = await this.fetcher(RELEASE_API, {
+      const response = await this.fetcher(`${this.baseUrl}/api/v1/releases/latest`, {
         headers: {
-          Accept: 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
+          Accept: 'application/json',
           'User-Agent': 'CodeDrobe-Desktop',
         },
         signal: AbortSignal.timeout(12_000),
@@ -85,17 +91,20 @@ export class UpdateService {
         this.latest = { status: 'up-to-date', currentVersion: this.currentVersion, latestVersion: null, releaseUrl: null, asset: null, checkedAt };
         return this.latest;
       }
-      if (!response.ok) throw new Error(`GitHub Releases request failed (${response.status}).`);
-      const release = await response.json() as GitHubRelease;
-      if (!release.tag_name || !release.html_url || !Array.isArray(release.assets)) throw new Error('GitHub returned an invalid release.');
-      const latestVersion = normalizeVersion(release.tag_name);
+      if (!response.ok) throw new Error(`Release request failed (${response.status}).`);
+      const payload = await response.json() as { data?: DesktopRelease };
+      const release = payload.data;
+      if (!release?.tag || !release.releaseUrl || !Array.isArray(release.assets)) {
+        throw new Error('The release service returned an invalid release.');
+      }
+      const latestVersion = normalizeVersion(release.tag);
       const available = compareVersions(latestVersion, this.currentVersion) > 0;
       const asset = available ? selectReleaseAsset(release.assets, this.platform, this.arch) : null;
       this.latest = {
         status: available ? 'available' : 'up-to-date',
         currentVersion: this.currentVersion,
         latestVersion,
-        releaseUrl: release.html_url,
+        releaseUrl: release.releaseUrl,
         asset,
         checkedAt,
         message: available && !asset ? 'A new release exists, but no installer matches this platform.' : undefined,

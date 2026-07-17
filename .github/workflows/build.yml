@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  # Manual runs build and sign macOS artifacts without publishing a release,
+  # so code signing can be tested without cutting a version.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -33,6 +36,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Validate semantic version tag
+        if: startsWith(github.ref, 'refs/tags/')
         shell: bash
         run: |
           set -euo pipefail
@@ -50,7 +54,7 @@ jobs:
     name: Build macOS arm64
     needs: validate
     runs-on: macos-14
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Check out repository
@@ -67,11 +71,74 @@ jobs:
         run: npm ci
 
       - name: Set application version from tag
+        if: startsWith(github.ref, 'refs/tags/')
         shell: bash
         run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
 
+      # Imports the Developer ID Application certificate into a throwaway
+      # keychain and stages the App Store Connect API key for notarization.
+      # When the signing secrets are absent (e.g. forks) the build proceeds
+      # unsigned, matching the previous behaviour.
+      - name: Import code signing credentials
+        env:
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${MACOS_CERT_P12_BASE64}" ]]; then
+            echo "MACOS_CERT_P12_BASE64 secret not configured; building unsigned."
+            exit 0
+          fi
+          KEYCHAIN_PATH="$RUNNER_TEMP/codedrobe-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          printf '%s' "$MACOS_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$KEYCHAIN_PATH" \
+            -P "${MACOS_CERT_PASSWORD}" -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$RUNNER_TEMP/certificate.p12"
+          # The Developer ID G2 intermediate is required to build the trust
+          # chain; import it in case the runner image lacks it.
+          if curl -fsSL --retry 3 https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
+            -o "$RUNNER_TEMP/DeveloperIDG2CA.cer"; then
+            security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN_PATH" || true
+          else
+            echo "::warning::Could not download the Developer ID G2 intermediate certificate."
+          fi
+          security set-key-partition-list -S 'apple-tool:,apple:' -s \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+          echo "MACOS_SIGN=1" >> "$GITHUB_ENV"
+          if [[ -n "${APPLE_API_KEY_BASE64}" ]]; then
+            API_KEY_PATH="$RUNNER_TEMP/apple-api-key.p8"
+            printf '%s' "$APPLE_API_KEY_BASE64" | base64 --decode > "$API_KEY_PATH"
+            echo "APPLE_API_KEY=$API_KEY_PATH" >> "$GITHUB_ENV"
+          else
+            echo "::warning::APPLE_API_KEY_BASE64 secret not configured; skipping notarization."
+          fi
+
       - name: Build DMG and ZIP
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: npm run make -- --arch=arm64
+
+      - name: Verify code signature and notarization
+        if: env.MACOS_SIGN == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH="out/CodeDrobe-darwin-arm64/CodeDrobe.app"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          if [[ -n "${APPLE_API_KEY:-}" ]]; then
+            xcrun stapler validate "$APP_PATH"
+            spctl --assess --type execute --verbose=2 "$APP_PATH"
+          fi
 
       - name: Verify macOS artifacts and bundled runtime
         shell: bash
@@ -97,11 +164,18 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Clean up signing keychain
+        if: always()
+        shell: bash
+        run: security delete-keychain "$RUNNER_TEMP/codedrobe-signing.keychain-db" 2>/dev/null || true
+
   build-windows:
-    name: Build Windows x64
+    name: Build Windows x64 installers
+    # Signing test runs (workflow_dispatch) only need the macOS build.
+    if: startsWith(github.ref, 'refs/tags/')
     needs: validate
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Check out repository
@@ -117,25 +191,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install WiX Toolset
+        shell: pwsh
+        run: choco install wixtoolset --version=3.14.0 --yes --no-progress
+
       - name: Set application version from tag
         shell: bash
         run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
 
-      - name: Build Squirrel installer
+      - name: Build WiX MSI and packaged application
         run: npm run make -- --arch=x64
+
+      - name: Build NSIS and Portable executables
+        run: npm run make:windows:installers
 
       - name: Verify Windows artifacts and bundled runtime
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          if (-not (Get-ChildItem out/make -Recurse -Filter 'CodeDrobe-Setup.exe')) {
-            throw 'CodeDrobe-Setup.exe was not generated.'
+          if (-not (Get-ChildItem out/make -Recurse -Filter '*.msi')) {
+            throw 'The WiX MSI installer was not generated.'
           }
-          if (-not (Get-ChildItem out/make -Recurse -Filter '*.nupkg')) {
-            throw 'The Squirrel .nupkg was not generated.'
+          if (-not (Get-ChildItem out/make -Recurse -Filter '*-Setup.exe')) {
+            throw 'The NSIS Setup executable was not generated.'
           }
-          if (-not (Get-ChildItem out/make -Recurse -Filter 'RELEASES')) {
-            throw 'The Squirrel RELEASES file was not generated.'
+          if (-not (Get-ChildItem out/make -Recurse -Filter '*-Portable.exe')) {
+            throw 'The Portable executable was not generated.'
           }
           $resources = 'out/CodeDrobe-win32-x64/resources'
           foreach ($directory in @('scripts', 'assets', 'themes')) {
@@ -155,13 +236,13 @@ jobs:
           name: CodeDrobe-Windows-x64-${{ github.ref_name }}
           path: |
             out/make/**/*.exe
-            out/make/**/*.nupkg
-            out/make/**/RELEASES
+            out/make/**/*.msi
           if-no-files-found: error
           retention-days: 14
 
   release:
     name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
     needs:
       - build-macos
       - build-windows
