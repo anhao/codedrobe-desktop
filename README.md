@@ -46,7 +46,7 @@ Version 2 is a complete rebuild:
 
 ## Account and permissions
 
-Signing in opens your system browser for an OAuth 2.0 Authorization Code + PKCE flow against `codedrobe.app`; the app never sees your password. Requested scopes are shown on the consent page and can be revoked at any time from the website's **Authorized apps** page. Refresh tokens are stored encrypted with the operating system keychain (Electron `safeStorage`).
+Signing in opens your system browser for an OAuth 2.0 Authorization Code + PKCE flow against `codedrobe.app`; the app never sees your password. Requested scopes are shown on the consent page and can be revoked at any time from the website's **Authorized apps** page. Credentials are stored in a file readable only by your user account (mode 0600) inside the app's data directory — the same model as the CodeDrobe CLI. Signing out revokes the grant server-side and deletes the file.
 
 ## Deep links
 

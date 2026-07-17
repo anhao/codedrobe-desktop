@@ -101,8 +101,12 @@ function callbackHtml(variant: CallbackVariant, iconDataUrl: string | null): str
 
 /**
  * Authorization Code + PKCE (S256) against codedrobe.app, per
- * website/docs/oauth-clients-contract.md §3. Refresh tokens are encrypted with
- * Electron safeStorage and rotated atomically; the access token stays in memory.
+ * website/docs/oauth-clients-contract.md §3. Both tokens persist in one plain
+ * JSON file readable only by the user (0600), matching the CLI's credential
+ * store — safeStorage was dropped because its keychain key triggers an access
+ * prompt on every unsigned/dev launch. The 15-minute access token is kept on
+ * disk so a restart inside its lifetime reuses it instead of burning a refresh
+ * rotation (whose crash window could revoke the grant).
  */
 export class AuthService {
   private credentials: StoredCredentials | null = null;
@@ -119,14 +123,31 @@ export class AuthService {
   ) {}
 
   async initialize(): Promise<void> {
+    let payload: Buffer;
     try {
-      const encrypted = await fs.readFile(this.credentialsFile);
-      const raw = safeStorage.isEncryptionAvailable()
-        ? safeStorage.decryptString(encrypted)
-        : encrypted.toString('utf8');
+      payload = await fs.readFile(this.credentialsFile);
+    } catch {
+      this.credentials = null;
+      return;
+    }
+    let raw = payload.toString('utf8');
+    let migrated = false;
+    if (!raw.trimStart().startsWith('{')) {
+      // Pre-2.0.1 files were safeStorage-encrypted; decrypt once (this may
+      // prompt for the keychain one last time) and rewrite as plain JSON.
+      try {
+        raw = safeStorage.decryptString(payload);
+        migrated = true;
+      } catch {
+        this.credentials = null;
+        return;
+      }
+    }
+    try {
       const parsed = JSON.parse(raw) as StoredCredentials;
       if (parsed?.version === 1 && parsed.clientId === CLIENT_ID && typeof parsed.refreshToken === 'string') {
         this.credentials = parsed;
+        if (migrated) await this.persist();
       }
     } catch {
       this.credentials = null;
@@ -138,10 +159,7 @@ export class AuthService {
       await fs.rm(this.credentialsFile, { force: true });
       return;
     }
-    const raw = JSON.stringify(this.credentials);
-    const payload = safeStorage.isEncryptionAvailable()
-      ? safeStorage.encryptString(raw)
-      : Buffer.from(raw, 'utf8');
+    const payload = Buffer.from(JSON.stringify(this.credentials), 'utf8');
     await fs.mkdir(path.dirname(this.credentialsFile), { recursive: true });
     const temporary = `${this.credentialsFile}.tmp`;
     await fs.writeFile(temporary, payload, { mode: 0o600 });

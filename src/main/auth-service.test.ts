@@ -44,9 +44,10 @@ function fakeFetcher(): typeof fetch {
   }) as typeof fetch;
 }
 
-function service(): AuthService {
+function service(): { auth: AuthService; file: string } {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'cdb-auth-'));
-  return new AuthService(BASE, path.join(dir, 'credentials.bin'), fakeFetcher());
+  const file = path.join(dir, 'credentials.json');
+  return { auth: new AuthService(BASE, file, fakeFetcher()), file };
 }
 
 async function waitFor<T>(read: () => T | null, timeoutMs = 3000): Promise<T> {
@@ -72,7 +73,7 @@ function httpGet(target: string): Promise<{ status: number; body: string }> {
 
 describe('AuthService PKCE login', () => {
   it('emits the authorize URL to the renderer and completes on the loopback callback', async () => {
-    const auth = service();
+    const { auth, file } = service();
     let authorizeUrl: string | null = null;
     const loginPromise = auth.login({ onAuthorizeUrl: (url) => { authorizeUrl = url; } });
     const emitted = await waitFor(() => authorizeUrl);
@@ -101,10 +102,20 @@ describe('AuthService PKCE login', () => {
     const result = await loginPromise;
     expect(result.loggedIn).toBe(true);
     if (result.loggedIn) expect(result.user.handle).toBe('tester');
+
+    // Credentials persist as plain user-only JSON: a fresh service instance
+    // (an app restart) reads them back without any keychain involvement.
+    const { readFileSync, statSync } = await import('node:fs');
+    expect((statSync(file).mode & 0o777)).toBe(0o600);
+    const stored = JSON.parse(readFileSync(file, 'utf8'));
+    expect(stored.refreshToken).toBe('cdbrt_test');
+    const restarted = new AuthService(BASE, file, fakeFetcher());
+    await restarted.initialize();
+    expect(await restarted.getAccessToken()).toBe('cdbat_test');
   });
 
   it('rejects with LOGIN_CANCELLED when the dialog cancels the flow', async () => {
-    const auth = service();
+    const { auth } = service();
     let authorizeUrl: string | null = null;
     const loginPromise = auth.login({ onAuthorizeUrl: (url) => { authorizeUrl = url; } });
     await waitFor(() => authorizeUrl);
