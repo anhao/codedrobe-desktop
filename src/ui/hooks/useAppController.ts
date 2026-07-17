@@ -83,6 +83,7 @@ export function useAppController() {
   const [logsOpen, setLogsOpen] = useState(false);
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
   const [updateProgress, setUpdateProgress] = useState<number | null>(null);
+  const [updateReady, setUpdateReady] = useState(false);
 
   const t: UiMessages = uiMessages[locale];
   const toastTimer = useRef<number | null>(null);
@@ -524,9 +525,11 @@ export function useAppController() {
 
   const downloadUpdate = useCallback(async () => {
     setBusy('update');
+    setUpdateReady(false);
     try {
-      await window.codeDrobe.downloadUpdate();
-      showToast(t.updateReady);
+      const outcome = await window.codeDrobe.downloadUpdate();
+      if (outcome.ready) setUpdateReady(true);
+      else showToast(t.updateReady);
     } catch (error) {
       fail(error);
     } finally {
@@ -535,8 +538,14 @@ export function useAppController() {
     }
   }, [fail, showToast, t]);
 
+  const installUpdate = useCallback(() => {
+    // The app quits into the installer; errors only occur when nothing is staged.
+    void window.codeDrobe.installUpdate().catch((error) => fail(error));
+  }, [fail]);
+
   const checkUpdates = useCallback(async () => {
     setUpdateChecking(true);
+    setUpdateReady(false);
     try {
       setUpdate(await window.codeDrobe.checkForUpdates());
     } catch {
@@ -598,8 +607,10 @@ export function useAppController() {
     update,
     updateProgress,
     updateChecking,
+    updateReady,
     checkUpdates,
     downloadUpdate,
+    installUpdate,
     loginUrl,
     copyLoginUrl,
     reopenLoginBrowser,

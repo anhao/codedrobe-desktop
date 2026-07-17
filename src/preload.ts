@@ -43,6 +43,7 @@ const api: CodeDrobeApi = {
   openWebPage: (page: 'privacy' | 'terms' | 'account') => ipcRenderer.invoke('web:open-page', page),
   checkForUpdates: () => ipcRenderer.invoke('updates:check'),
   downloadUpdate: () => ipcRenderer.invoke('updates:download'),
+  installUpdate: () => ipcRenderer.invoke('updates:install'),
   openUpdateRelease: (url: string) => ipcRenderer.invoke('updates:open-release', url),
   showInFolder: (itemPath: string) => ipcRenderer.invoke('shell:show-item', itemPath),
   onRuntimeLog: (listener) => subscribe<string>('runtime:log', listener),

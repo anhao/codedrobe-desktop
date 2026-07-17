@@ -202,6 +202,11 @@ export interface UpdateDownloadResult {
   assetName: string;
 }
 
+export interface UpdateDownloadOutcome {
+  /** True when the update is staged locally and installUpdate() restarts into it. */
+  ready: boolean;
+}
+
 // --- IPC results ---
 
 export interface BootstrapData {
@@ -253,7 +258,8 @@ export interface CodeDrobeApi {
   openXShare(text: string): Promise<void>;
   openWebPage(page: 'privacy' | 'terms' | 'account'): Promise<void>;
   checkForUpdates(): Promise<UpdateInfo>;
-  downloadUpdate(): Promise<UpdateDownloadResult>;
+  downloadUpdate(): Promise<UpdateDownloadOutcome>;
+  installUpdate(): Promise<void>;
   openUpdateRelease(url: string): Promise<void>;
   showInFolder(path: string): Promise<void>;
   onRuntimeLog(listener: (line: string) => void): () => void;

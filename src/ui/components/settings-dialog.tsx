@@ -10,6 +10,7 @@ import {
   Settings01Icon,
 } from '@hugeicons/core-free-icons';
 import type { AppController, SettingsSection } from '@/hooks/useAppController';
+import { UpdateAction } from '@/components/update-action';
 import { AppMark, APP_META } from '@/components/app-mark';
 import { APP_IDS, type AppId } from '@shared/types';
 import { Button } from '@/components/ui/button';
@@ -234,30 +235,21 @@ export function SettingsDialog({ controller }: { controller: AppController }) {
                   </Button>
                 </SettingRow>
                 {update?.status === 'available' && (
-                  <SettingRow
-                    title={t.updateAvailable(update.latestVersion ?? '')}
-                    description={update.releaseUrl ?? undefined}
-                  >
-                    {update.releaseUrl && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => void window.codeDrobe.openUpdateRelease(update.releaseUrl!)}
-                      >
-                        {t.openReleasePage}
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      disabled={controller.busy === 'update'}
-                      onClick={() => void controller.downloadUpdate()}
-                    >
-                      {controller.busy === 'update' ? <Spinner data-icon="inline-start" /> : null}
-                      {controller.busy === 'update' && controller.updateProgress !== null
-                        ? t.downloadingUpdate(controller.updateProgress)
-                        : t.downloadUpdate}
-                    </Button>
-                  </SettingRow>
+                  <div className="flex flex-col gap-3 rounded-xl border border-primary/30 bg-accent/30 px-4 py-3.5">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{t.updateAvailable(update.latestVersion ?? '')}</p>
+                      {update.releaseUrl && (
+                        <button
+                          type="button"
+                          className="mt-0.5 truncate text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                          onClick={() => void window.codeDrobe.openUpdateRelease(update.releaseUrl!)}
+                        >
+                          {t.openReleasePage}
+                        </button>
+                      )}
+                    </div>
+                    <UpdateAction controller={controller} />
+                  </div>
                 )}
               </>
             )}

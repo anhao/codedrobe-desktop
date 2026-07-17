@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, shell, Tray } from 'electron';
+import { app, autoUpdater, BrowserWindow, dialog, ipcMain, Menu, nativeImage, shell, Tray } from 'electron';
+import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { THEME_EXTENSION } from '@codedrobe/core';
 import { AuthService } from './main/auth-service';
@@ -12,7 +13,7 @@ import { SettingsService } from './main/settings-service';
 import { ThemeLibrary } from './main/theme-library';
 import { UpdateService } from './main/update-service';
 import { DEFAULT_LOCALE, getMainMessages, isAppLocale, setMainLocale, type AppLocale } from './shared/i18n';
-import { APP_IDS, isAppId, type AppId, type ApplyRequest, type MarketplaceQuery, type SettingsUpdateResult } from './shared/types';
+import { APP_IDS, isAppId, type AppId, type ApplyRequest, type MarketplaceQuery, type SettingsUpdateResult, type UpdateDownloadOutcome } from './shared/types';
 
 const API_BASE = (process.env.CODEDROBE_API_BASE ?? 'https://codedrobe.app').replace(/\/+$/, '');
 
@@ -26,6 +27,8 @@ let updates: UpdateService;
 let auth: AuthService;
 let settings: SettingsService;
 const deepLinks = new DeepLinkManager();
+/** Update staged by updates:download, consumed by updates:install. */
+let stagedUpdate: { kind: 'squirrel' } | { kind: 'nsis'; installerPath: string } | null = null;
 let locale: AppLocale = DEFAULT_LOCALE;
 let userDataRoot = '';
 
@@ -124,6 +127,43 @@ function settingsDto() {
     APP_IDS.map((appId) => [appId, core.defaultPortFor(appId)]),
   ) as Record<AppId, number>;
   return settings.toDto(defaultPorts);
+}
+
+/** Squirrel.Mac in-place download: resolves once the update is staged. */
+function downloadMacInPlace(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      clearTimeout(timeout);
+      autoUpdater.removeListener('update-downloaded', onDownloaded);
+      autoUpdater.removeListener('update-not-available', onNotAvailable);
+      autoUpdater.removeListener('error', onError);
+    };
+    const onDownloaded = () => { cleanup(); resolve(); };
+    const onNotAvailable = () => { cleanup(); reject(new Error('The update feed reports no update.')); };
+    const onError = (error: Error) => { cleanup(); reject(error); };
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('In-place update timed out.')); }, 10 * 60_000);
+    autoUpdater.on('update-downloaded', onDownloaded);
+    autoUpdater.on('update-not-available', onNotAvailable);
+    autoUpdater.on('error', onError);
+    autoUpdater.setFeedURL({
+      url: `${API_BASE}/api/v1/releases/squirrel/darwin/${process.arch}?version=${app.getVersion()}`,
+    });
+    autoUpdater.checkForUpdates();
+  });
+}
+
+/**
+ * Silent NSIS self-update only applies to per-user installs: portable builds
+ * have no install dir, and MSI installs (Program Files) would end up with a
+ * duplicate per-user copy.
+ */
+function canSilentNsisUpdate(assetName: string): boolean {
+  if (process.platform !== 'win32' || !app.isPackaged) return false;
+  if (!/setup\.exe$/i.test(assetName)) return false;
+  if (process.env.PORTABLE_EXECUTABLE_DIR) return false;
+  const localAppData = process.env.LOCALAPPDATA;
+  if (!localAppData) return false;
+  return process.execPath.toLowerCase().startsWith(path.join(localAppData, 'Programs').toLowerCase());
 }
 
 function registerIpc(): void {
@@ -245,11 +285,38 @@ function registerIpc(): void {
     await shell.openExternal(`https://x.com/intent/post?text=${encodeURIComponent(text)}`);
   });
   ipcMain.handle('updates:check', () => updates.check());
-  ipcMain.handle('updates:download', async () => {
+  ipcMain.handle('updates:download', async (): Promise<UpdateDownloadOutcome> => {
+    stagedUpdate = null;
+    // macOS packaged builds update in place (Squirrel.Mac swaps the .app);
+    // any failure falls back to the manual installer flow below.
+    if (process.platform === 'darwin' && app.isPackaged) {
+      try {
+        await downloadMacInPlace();
+        stagedUpdate = { kind: 'squirrel' };
+        return { ready: true };
+      } catch (error) {
+        sendLog(`[update] in-place update unavailable, falling back to installer: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
     const result = await updates.download((progress) => mainWindow?.webContents.send('updates:progress', progress));
+    if (canSilentNsisUpdate(result.assetName)) {
+      stagedUpdate = { kind: 'nsis', installerPath: result.path };
+      return { ready: true };
+    }
     const openError = await shell.openPath(result.path);
     if (openError) shell.showItemInFolder(result.path);
-    return result;
+    return { ready: false };
+  });
+  ipcMain.handle('updates:install', () => {
+    if (!stagedUpdate) throw new Error('No staged update.');
+    isQuitting = true;
+    if (stagedUpdate.kind === 'squirrel') {
+      autoUpdater.quitAndInstall();
+      return;
+    }
+    // electron-builder NSIS: /S = silent overwrite, --force-run = relaunch.
+    spawn(stagedUpdate.installerPath, ['/S', '--force-run'], { detached: true, stdio: 'ignore' }).unref();
+    app.quit();
   });
   ipcMain.handle('updates:open-release', async (_event, value: unknown) => {
     if (typeof value !== 'string') throw new Error('Invalid release URL.');

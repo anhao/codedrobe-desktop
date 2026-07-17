@@ -36,7 +36,7 @@ Version 2 is a complete rebuild:
 - Import and export portable `.codedrobe-theme` packages (legacy `.codex-theme` files are converted on import).
 - Configure app install locations manually when auto-detection misses (mainly Windows) and change per-app debug ports when the defaults are occupied.
 - Switch between Chinese and English; the first launch follows the system locale.
-- Check GitHub Releases for new versions and download the matching installer from inside the app.
+- Update in place from inside the app: macOS swaps the app bundle via the built-in updater and Windows (installed builds) applies the update silently — one click on "Restart & install". Portable/MSI builds fall back to the downloads page.
 
 ## Codex theme gallery
 
