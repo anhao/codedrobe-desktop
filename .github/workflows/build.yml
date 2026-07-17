@@ -146,9 +146,9 @@ jobs:
           set -euo pipefail
           test -f out/make/CodeDrobe.dmg
           find out/make -type f -name '*.zip' -print -quit | grep -q .
-          test -d out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/scripts
-          test -d out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/assets
-          test -d out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/themes
+          test -f out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/runtime/icon.png
+          test -f out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/runtime/trayTemplate.png
+          test -f out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/runtime/tray-icon.png
           test -f out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/LICENSE
           test -f out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/SOURCE_CODE.md
           test -f out/CodeDrobe-darwin-arm64/CodeDrobe.app/Contents/Resources/THIRD_PARTY_NOTICES.md
@@ -193,7 +193,9 @@ jobs:
 
       - name: Install WiX Toolset
         shell: pwsh
-        run: choco install wixtoolset --version=3.14.0 --yes --no-progress
+        # WiX 3.14.0 was unlisted from Chocolatey (burn CVE); install the
+        # latest listed 3.x package instead of pinning a dead version.
+        run: choco install wixtoolset --yes --no-progress
 
       - name: Set application version from tag
         shell: bash
@@ -219,9 +221,9 @@ jobs:
             throw 'The Portable executable was not generated.'
           }
           $resources = 'out/CodeDrobe-win32-x64/resources'
-          foreach ($directory in @('scripts', 'assets', 'themes')) {
-            if (-not (Test-Path (Join-Path $resources $directory))) {
-              throw "Bundled resource directory is missing: $directory"
+          foreach ($file in @('runtime/icon.png', 'runtime/trayTemplate.png', 'runtime/tray-icon.png')) {
+            if (-not (Test-Path (Join-Path $resources $file))) {
+              throw "Bundled runtime asset is missing: $file"
             }
           }
           foreach ($file in @('LICENSE', 'SOURCE_CODE.md', 'THIRD_PARTY_NOTICES.md', 'licenses/Apache-2.0.txt')) {
