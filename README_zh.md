@@ -65,7 +65,7 @@ npm start
 
 如需连接本地网站实例：`CODEDROBE_API_BASE=http://localhost:4173 npm start`。
 
-Desktop 使用保存在 `vendor/` 中的固定版本 `@codedrobe/core` 包，因此本地开发和 CI 使用完全相同的 Core，不需要同时检出相邻仓库。
+Desktop 锁定 npm 上的精确 [`@codedrobe/core`](https://www.npmjs.com/package/@codedrobe/core) 版本，本地开发和 CI 构建使用完全相同的 Core 发行版。
 
 ## 测试和打包
 

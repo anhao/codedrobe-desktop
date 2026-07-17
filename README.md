@@ -65,7 +65,7 @@ npm start
 
 Point the app at a local website instance with `CODEDROBE_API_BASE=http://localhost:4173 npm start`.
 
-The Desktop app uses the pinned `@codedrobe/core` package stored in `vendor/`. Development and CI therefore use the same Core version without requiring a sibling repository checkout.
+The Desktop app pins an exact [`@codedrobe/core`](https://www.npmjs.com/package/@codedrobe/core) version from npm, so development and CI build against the same Core release.
 
 ## Test and package
 
