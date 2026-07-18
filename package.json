@@ -1,7 +1,7 @@
 {
   "name": "codedrobe-desktop",
   "productName": "CodeDrobe",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "description": "Open-source theme manager and desktop customization tool for the OpenAI Codex app on macOS and Windows.",
   "author": "CodeDrobe",
   "license": "MPL-2.0",
@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
-    "@codedrobe/core": "0.4.0-beta.0",
+    "@codedrobe/core": "0.4.0",
     "@hugeicons/core-free-icons": "^4.2.2",
     "@hugeicons/react": "^1.1.9",
     "class-variance-authority": "^0.7.1",
