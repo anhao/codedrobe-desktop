@@ -8,6 +8,7 @@ import {
   findRunningPids,
   findTargets,
   getAdapter,
+  resolveDebugPorts,
   resolveThemeTarget,
   restoreSkin,
 } from '@codedrobe/core';
@@ -88,6 +89,31 @@ export class CoreService {
       ?? this.adapter(appId).defaultPort;
   }
 
+  /**
+   * Hosts that force an ephemeral debug port (e.g. QoderWork) publish the
+   * live port through DevToolsActivePort files. An explicit user override
+   * always wins; a file port is only trusted while it serves targets that
+   * match the adapter.
+   */
+  private async resolveLivePort(appId: AppId, preferredPort: number): Promise<number> {
+    if (this.settings.overridesFor(appId).port != null) return preferredPort;
+    const adapter = this.adapter(appId);
+    try {
+      if ((await findTargets(adapter, preferredPort, 1200)).length) return preferredPort;
+    } catch {
+      // Fall through to the published debug-port candidates.
+    }
+    for (const filePort of await resolveDebugPorts(adapter, process.platform)) {
+      if (filePort === preferredPort) continue;
+      try {
+        if ((await findTargets(adapter, filePort, 1200)).length) return filePort;
+      } catch {
+        // Try the next candidate.
+      }
+    }
+    return preferredPort;
+  }
+
   defaultPortFor(appId: AppId): number {
     return this.adapter(appId).defaultPort;
   }
@@ -98,7 +124,7 @@ export class CoreService {
 
   private async appStatus(appId: AppId): Promise<AppStatus> {
     const adapter = this.adapter(appId);
-    const port = this.portFor(appId);
+    let port = this.portFor(appId);
     const override = this.settings.overridesFor(appId);
     let discovered: Awaited<ReturnType<typeof discoverApp>> = null;
     let running = false;
@@ -117,6 +143,7 @@ export class CoreService {
       }
     }
     if (running) {
+      port = await this.resolveLivePort(appId, port);
       try {
         debugReady = (await findTargets(adapter, port, 1200)).length > 0;
       } catch {
@@ -144,7 +171,7 @@ export class CoreService {
     if (platform() === 'unsupported') throw new Error(copy.unsupportedPlatform);
     const appId = request.appId;
     const adapter = this.adapter(appId);
-    const port = request.port ?? this.portFor(appId);
+    const port = request.port ?? (await this.resolveLivePort(appId, this.portFor(appId)));
     if (!isPort(port)) throw new Error(copy.invalidCdpPort);
 
     const entry = await this.library.find(request.themeId);
@@ -196,7 +223,7 @@ export class CoreService {
 
   async restore(appId: AppId): Promise<SystemStatus> {
     const adapter = this.adapter(appId);
-    const port = this.portFor(appId);
+    const port = await this.resolveLivePort(appId, this.portFor(appId));
     this.log(`[restore] ${appId} (port ${port})`);
     try {
       await restoreSkin({ adapter, port });

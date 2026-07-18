@@ -16,7 +16,7 @@ import { HugeIcon } from '@/components/ui/huge-icon';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Spinner } from '@/components/ui/spinner';
-import { AppMark } from '@/components/app-mark';
+import { APP_META, AppMark } from '@/components/app-mark';
 import { StoreThemeCard } from '@/components/theme-card';
 import { cn } from '@/lib/utils';
 
@@ -138,7 +138,7 @@ export function StoreView({ controller }: { controller: AppController }) {
             )}
           >
             <AppMark appId={appId} size={14} />
-            {appId === 'codex' ? 'Codex' : 'WorkBuddy'}
+            {APP_META[appId].name}
           </button>
         ))}
         <span className="mx-1 h-4 w-px bg-border" />

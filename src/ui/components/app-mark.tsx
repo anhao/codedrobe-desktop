@@ -4,10 +4,14 @@ import type { AppId } from '@shared/types';
 import { cn } from '@/lib/utils';
 import codexIcon from '../assets/apps/codex.png';
 import workbuddyIcon from '../assets/apps/workbuddy.png';
+import qoderworkIcon from '../assets/apps/qoderwork.png';
+import traeworkIcon from '../assets/apps/traework.png';
 
 export const APP_META: Record<AppId, { name: string; icon: string }> = {
   codex: { name: 'Codex', icon: codexIcon },
   workbuddy: { name: 'WorkBuddy', icon: workbuddyIcon },
+  qoderwork: { name: 'QoderWork', icon: qoderworkIcon },
+  traework: { name: 'TRAE SOLO', icon: traeworkIcon },
 };
 
 /** App icon mark (mirrors the website's AppMark; rounded-square app icon). */

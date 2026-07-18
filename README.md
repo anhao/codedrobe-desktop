@@ -10,7 +10,7 @@
 
 Website: [codedrobe.app](https://codedrobe.app) · [Download the latest release](https://github.com/CodeDrobe/desktop/releases/latest)
 
-CodeDrobe Desktop is an open-source theme manager for AI desktop apps — currently **OpenAI Codex** and **WorkBuddy** — on macOS and Windows. Browse the CodeDrobe theme store, apply a theme to any supported app with one click, and restore the native interface at any time. Themes only change appearance: your app installation and data stay untouched.
+CodeDrobe Desktop is an open-source theme manager for AI desktop apps — currently **OpenAI Codex**, **WorkBuddy**, **QoderWork**, and **TRAE SOLO** — on macOS and Windows. Browse the CodeDrobe theme store, apply a theme to any supported app with one click, and restore the native interface at any time. Themes only change appearance: your app installation and data stay untouched.
 
 ![CodeDrobe Desktop theme manager](docs/images/desktop.png)
 
@@ -19,7 +19,7 @@ CodeDrobe Desktop is an open-source theme manager for AI desktop apps — curren
 Version 2 is a complete rebuild:
 
 - **New UI** built with Tailwind CSS + shadcn-style components, sharing the design language of [codedrobe.app](https://codedrobe.app).
-- **Multi-app support** on the new `@codedrobe/core` engine: one theme package can target several apps, and the detail drawer applies it per app (Codex, WorkBuddy).
+- **Multi-app support** on the new `@codedrobe/core` engine: one theme package can target several apps, and the detail drawer applies it per app (Codex, WorkBuddy, QoderWork, TRAE SOLO).
 - **CodeDrobe account sign-in** (OAuth 2.0 PKCE through your system browser) with likes, a synced **Favorites** view, and share actions.
 - **Deep links**: `codedrobe://themes/apply?theme=<slug>&app=<id>` from the website installs and applies a theme after an in-app confirmation.
 - **Settings dialog** with categorized sections: display language, manual app-path override, per-app debug ports, and software updates.

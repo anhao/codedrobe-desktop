@@ -5,8 +5,8 @@ import type { AppLocale } from './i18n';
 export type Platform = 'darwin' | 'win32' | 'unsupported';
 
 /** Platform-registered target applications (mirrors @codedrobe/core adapters). */
-export type AppId = 'codex' | 'workbuddy';
-export const APP_IDS: readonly AppId[] = ['codex', 'workbuddy'];
+export type AppId = 'codex' | 'workbuddy' | 'qoderwork' | 'traework';
+export const APP_IDS: readonly AppId[] = ['codex', 'workbuddy', 'qoderwork', 'traework'];
 
 export function isAppId(value: unknown): value is AppId {
   return typeof value === 'string' && (APP_IDS as readonly string[]).includes(value);
