@@ -260,6 +260,10 @@ export function useAppController() {
         setRestartPrompt({ themeId, themeName, appId });
         return false;
       }
+      if (result.status === 'port-occupied') {
+        showToast(result.message, 'destructive');
+        return false;
+      }
       showToast(t.themeApplied(themeName));
       return true;
     } catch (error) {

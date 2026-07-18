@@ -162,11 +162,22 @@ export class CoreService {
       });
     } catch (error) {
       const code = (error as { code?: string }).code;
-      if (code === 'CODEDROBE_RESTART_REQUIRED' || code === 'CODEDROBE_PORT_OCCUPIED') {
-        this.log(`[apply] restart required for ${appId}`);
+      const message = error instanceof Error ? error.message : String(error);
+      this.log(`[apply] ${appId} failed${code ? ` [${code}]` : ''}: ${message}`);
+      if (code === 'CODEDROBE_RESTART_REQUIRED') {
         return {
           status: 'requires-restart',
           message: copy.restartRequiredMessage,
+          system: await this.status(),
+        };
+      }
+      // An occupied port is not fixed by restarting the target app, so it must
+      // not funnel into the restart dialog.
+      if (code === 'CODEDROBE_PORT_OCCUPIED') {
+        const occupiedPort = (error as { port?: number }).port ?? port;
+        return {
+          status: 'port-occupied',
+          message: copy.portOccupiedMessage(occupiedPort),
           system: await this.status(),
         };
       }

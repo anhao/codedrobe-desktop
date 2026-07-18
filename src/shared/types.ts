@@ -146,7 +146,7 @@ export interface ApplyRequest {
 }
 
 export interface ApplyResponse {
-  status: 'applied' | 'requires-restart';
+  status: 'applied' | 'requires-restart' | 'port-occupied';
   message: string;
   system: SystemStatus;
 }
