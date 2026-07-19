@@ -11,6 +11,20 @@ win:
     - nsis
     - portable
 
+# Registered by the NSIS installer (HKCU); the portable build has no installer,
+# so "Open with -> CodeDrobe" plus argv handling covers it there.
+fileAssociations:
+  - ext: codedrobe-theme
+    name: CodeDrobe Theme
+    description: CodeDrobe theme package
+    role: Viewer
+    icon: assets/theme-file.ico
+  - ext: codex-theme
+    name: Legacy Codex Theme
+    description: Legacy Codex theme package
+    role: Viewer
+    icon: assets/theme-file.ico
+
 nsis:
   artifactName: CodeDrobe-${version}-${arch}-Setup.${ext}
   oneClick: false

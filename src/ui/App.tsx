@@ -32,6 +32,11 @@ export default function App() {
     <main
       className="grid h-svh grid-cols-[240px_minmax(0,1fr)] overflow-hidden bg-background font-sans text-foreground"
       lang={controller.locale === 'zh-CN' ? 'zh-CN' : 'en'}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault();
+        controller.dropThemeFiles(Array.from(event.dataTransfer.files));
+      }}
     >
       <Sidebar controller={controller} />
 

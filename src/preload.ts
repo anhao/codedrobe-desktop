@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
 
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { AppLocale } from './shared/i18n';
 import type {
   AppId,
   ApplyRequest,
   CodeDrobeApi,
   DeepLinkApplyRequest,
+  FileImportConfirmRequest,
+  FileImportResult,
   MarketplaceQuery,
 } from './shared/types';
 
@@ -23,6 +25,9 @@ const api: CodeDrobeApi = {
   applyTheme: (request: ApplyRequest) => ipcRenderer.invoke('theme:apply', request),
   restoreApp: (appId: AppId) => ipcRenderer.invoke('theme:restore', appId),
   importTheme: () => ipcRenderer.invoke('theme:import'),
+  importThemeFromPath: (path: string) => ipcRenderer.invoke('theme:import-path', path),
+  openThemeFile: (path: string) => ipcRenderer.invoke('theme:open-file', path),
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
   exportTheme: (themeId: string) => ipcRenderer.invoke('theme:export', themeId),
   deleteTheme: (themeId: string) => ipcRenderer.invoke('theme:delete', themeId),
   listMarketplace: (query?: MarketplaceQuery) => ipcRenderer.invoke('marketplace:list', query),
@@ -50,6 +55,9 @@ const api: CodeDrobeApi = {
   onAuthLoginUrl: (listener) => subscribe<string>('auth:login-url', listener),
   onUpdateDownloadProgress: (listener) => subscribe<number>('updates:progress', listener),
   onDeepLinkApply: (listener) => subscribe<DeepLinkApplyRequest>('deeplink:apply', listener),
+  onFileImported: (listener) => subscribe<FileImportResult>('file:imported', listener),
+  onFileImportConfirm: (listener) => subscribe<FileImportConfirmRequest>('file:import-confirm', listener),
+  onFileImportFailed: (listener) => subscribe<string>('file:import-failed', listener),
 };
 
 contextBridge.exposeInMainWorld('codeDrobe', api);

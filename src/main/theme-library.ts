@@ -7,6 +7,7 @@ import {
   convertLegacyThemeFile,
   readThemePackage,
   validateThemePackage,
+  LEGACY_THEME_EXTENSION,
   THEME_EXTENSION,
 } from '@codedrobe/core';
 import type { ThemePackage } from '@codedrobe/core';
@@ -18,6 +19,12 @@ const SAFE_ID = /^[a-z0-9][a-z0-9_-]*$/i;
 export interface ThemeEntry {
   bundle: ThemePackage;
   filePath: string;
+}
+
+export interface PackageInspection {
+  incoming: InstalledTheme;
+  /** The installed theme this import would replace, when the id is taken. */
+  existing: InstalledTheme | null;
 }
 
 function coverDataUrl(bundle: ThemePackage): string | null {
@@ -168,24 +175,55 @@ export class ThemeLibrary {
   }
 
   /**
-   * Import a user-picked package. Legacy .codex-theme files are converted to
-   * the codedrobe-theme format on the way in.
+   * Run `use` with a path to a valid codedrobe-theme file. Legacy .codex-theme
+   * files are converted into a temp file that lives for the duration of `use`.
    */
-  async importPackage(sourcePath: string): Promise<InstalledTheme> {
+  private async withNormalizedPackage<T>(
+    sourcePath: string,
+    use: (packagePath: string) => Promise<T>,
+  ): Promise<T> {
     if (sourcePath.endsWith(THEME_EXTENSION)) {
-      return this.installFile(sourcePath);
+      return use(sourcePath);
     }
-    if (sourcePath.endsWith('.codex-theme')) {
+    if (sourcePath.endsWith(LEGACY_THEME_EXTENSION)) {
       const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'codedrobe-convert-'));
       try {
         const converted = path.join(temporary, `converted${THEME_EXTENSION}`);
         await convertLegacyThemeFile(sourcePath, converted, { force: true });
-        return await this.installFile(converted);
+        return await use(converted);
       } finally {
         await fs.rm(temporary, { recursive: true, force: true });
       }
     }
     throw new Error(getMainMessages().invalidPackage);
+  }
+
+  /**
+   * Import a user-picked package. Legacy .codex-theme files are converted to
+   * the codedrobe-theme format on the way in.
+   */
+  async importPackage(sourcePath: string): Promise<InstalledTheme> {
+    return this.withNormalizedPackage(sourcePath, (packagePath) => this.installFile(packagePath));
+  }
+
+  /**
+   * Validate a package and report what importing it would do, without touching
+   * the library. Used by file-open auto-import to decide between installing
+   * directly and asking the user to confirm a replacement.
+   */
+  async inspectPackage(sourcePath: string): Promise<PackageInspection> {
+    return this.withNormalizedPackage(sourcePath, async (packagePath) => {
+      const bundle = await readThemePackage(packagePath);
+      if (!SAFE_ID.test(bundle.theme.id)) throw new Error(getMainMessages().manifestInvalidId);
+      const incoming = toInstalledTheme({ bundle, filePath: sourcePath });
+      let existing: InstalledTheme | null = null;
+      try {
+        existing = toInstalledTheme(await this.find(bundle.theme.id));
+      } catch {
+        existing = null;
+      }
+      return { incoming, existing };
+    });
   }
 
   async exportPackage(themeId: string, destination: string): Promise<void> {

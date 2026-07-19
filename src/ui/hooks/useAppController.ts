@@ -8,6 +8,7 @@ import type {
   AuthState,
   DeepLinkApplyRequest,
   DesktopSettings,
+  FileImportConfirmRequest,
   InstalledTheme,
   MarketplaceCategory,
   MarketplaceQuery,
@@ -74,6 +75,7 @@ export function useAppController() {
   const [restartPrompt, setRestartPrompt] = useState<RestartPrompt | null>(null);
   const [deletePrompt, setDeletePrompt] = useState<InstalledTheme | null>(null);
   const [deepLinkPrompt, setDeepLinkPrompt] = useState<DeepLinkPrompt | null>(null);
+  const [fileImportPrompt, setFileImportPrompt] = useState<FileImportConfirmRequest | null>(null);
   const [loginUrl, setLoginUrl] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('general');
@@ -191,6 +193,24 @@ export function useAppController() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // File-open auto-import events toast in the current locale, so they
+  // re-subscribe when the copy changes (unlike the boot subscriptions above).
+  useEffect(() => {
+    const offImported = window.codeDrobe.onFileImported((result) => {
+      setInstalled(result.themes);
+      showToast(t.importedTheme(result.theme.displayName));
+    });
+    const offConfirm = window.codeDrobe.onFileImportConfirm(setFileImportPrompt);
+    const offFailed = window.codeDrobe.onFileImportFailed((message) => {
+      showToast(message || t.actionFailed, 'destructive');
+    });
+    return () => {
+      offImported();
+      offConfirm();
+      offFailed();
+    };
+  }, [showToast, t]);
 
   const setLocale = useCallback(async (next: AppLocale) => {
     setLocaleState(next);
@@ -324,6 +344,32 @@ export function useAppController() {
       setBusy(null);
     }
   }, [fail, showToast, t]);
+
+  /** User approved replacing an installed theme with the opened file. */
+  const confirmFileImport = useCallback(async () => {
+    const prompt = fileImportPrompt;
+    if (!prompt) return;
+    setFileImportPrompt(null);
+    setBusy('import');
+    try {
+      const result = await window.codeDrobe.importThemeFromPath(prompt.path);
+      setInstalled(result.themes);
+      showToast(t.importedTheme(result.theme.displayName));
+    } catch (error) {
+      fail(error);
+    } finally {
+      setBusy(null);
+    }
+  }, [fail, fileImportPrompt, showToast, t]);
+
+  /** Theme packages dropped onto the window route through the file-open flow. */
+  const dropThemeFiles = useCallback((files: File[]) => {
+    for (const file of files) {
+      if (!/\.(codedrobe-theme|codex-theme)$/.test(file.name)) continue;
+      const path = window.codeDrobe.getPathForFile(file);
+      if (path) void window.codeDrobe.openThemeFile(path).catch(fail);
+    }
+  }, [fail]);
 
   const exportTheme = useCallback(async (themeId: string) => {
     try {
@@ -605,6 +651,10 @@ export function useAppController() {
     deepLinkPrompt,
     setDeepLinkPrompt,
     confirmDeepLink,
+    fileImportPrompt,
+    setFileImportPrompt,
+    confirmFileImport,
+    dropThemeFiles,
     logs,
     logsOpen,
     setLogsOpen,

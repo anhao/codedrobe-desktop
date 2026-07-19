@@ -9,6 +9,7 @@ const assets = path.join(root, 'assets');
 const runtimeAssets = path.join(assets, 'runtime');
 const source = path.join(assets, 'icon.svg');
 const traySource = path.join(assets, 'trayTemplate.svg');
+const themeFileSource = path.join(assets, 'theme-file.svg');
 const work = await mkdtemp(path.join(os.tmpdir(), 'codedrobe-icons-'));
 
 function render(input, size, output) {
@@ -57,30 +58,50 @@ try {
   for (const { size, file } of icoEntries) render(source, size, file);
   await writeIco(icoEntries, path.join(assets, 'icon.ico'));
 
+  // .codedrobe-theme document icon (Windows file association).
+  const themeIcoEntries = icoSizes.map((size) => ({ size, file: path.join(work, `theme-file-${size}.png`) }));
+  for (const { size, file } of themeIcoEntries) render(themeFileSource, size, file);
+  await writeIco(themeIcoEntries, path.join(assets, 'theme-file.ico'));
+
   render(traySource, 18, path.join(runtimeAssets, 'trayTemplate.png'));
   render(traySource, 36, path.join(runtimeAssets, 'trayTemplate@2x.png'));
   render(source, 32, path.join(runtimeAssets, 'tray-icon.png'));
 
-  if (process.platform === 'darwin') {
-    const iconset = path.join(work, 'CodeDrobe.iconset');
-    await mkdir(iconset);
-    const icnsFiles = [
-      ['icon_16x16.png', 16],
-      ['icon_16x16@2x.png', 32],
-      ['icon_32x32.png', 32],
-      ['icon_32x32@2x.png', 64],
-      ['icon_128x128.png', 128],
-      ['icon_128x128@2x.png', 256],
-      ['icon_256x256.png', 256],
-      ['icon_256x256@2x.png', 512],
-      ['icon_512x512.png', 512],
-      ['icon_512x512@2x.png', 1024],
-    ];
-    for (const [filename, size] of icnsFiles) render(source, size, path.join(iconset, filename));
-    execFileSync('iconutil', ['-c', 'icns', iconset, '-o', path.join(assets, 'icon.icns')], {
-      stdio: 'inherit',
-    });
-  }
+  // PNG-payload ICNS chunks, written directly (same layout iconutil emits, so
+  // no macOS-only toolchain is needed): base 16/32 slots plus the ic07..ic14
+  // 128..1024 and retina slots.
+  const icnsTypes = [
+    ['icp4', 16],
+    ['icp5', 32],
+    ['ic11', 32],
+    ['ic12', 64],
+    ['ic07', 128],
+    ['ic13', 256],
+    ['ic08', 256],
+    ['ic14', 512],
+    ['ic09', 512],
+    ['ic10', 1024],
+  ];
+  const writeIcns = async (svg, name, output) => {
+    const chunks = [];
+    for (const [type, size] of icnsTypes) {
+      const file = path.join(work, `${name}-${type}.png`);
+      render(svg, size, file);
+      const data = await readFile(file);
+      const header = Buffer.alloc(8);
+      header.write(type, 0, 'ascii');
+      header.writeUInt32BE(data.length + 8, 4);
+      chunks.push(header, data);
+    }
+    const body = Buffer.concat(chunks);
+    const fileHeader = Buffer.alloc(8);
+    fileHeader.write('icns', 0, 'ascii');
+    fileHeader.writeUInt32BE(body.length + 8, 4);
+    await writeFile(output, Buffer.concat([fileHeader, body]));
+  };
+  await writeIcns(source, 'CodeDrobe', path.join(assets, 'icon.icns'));
+  // .codedrobe-theme document icon (macOS CFBundleTypeIconFile).
+  await writeIcns(themeFileSource, 'CodeDrobeThemeFile', path.join(assets, 'theme-file.icns'));
 
   console.log('Generated CodeDrobe PNG, ICO, tray, and macOS ICNS assets.');
 } finally {

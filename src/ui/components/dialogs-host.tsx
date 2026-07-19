@@ -15,7 +15,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 
 export function DialogsHost({ controller }: { controller: AppController }) {
-  const { t, restartPrompt, deletePrompt, deepLinkPrompt, locale } = controller;
+  const { t, restartPrompt, deletePrompt, deepLinkPrompt, fileImportPrompt, locale } = controller;
   const appName = (appId: string) =>
     APP_IDS.includes(appId as AppId) ? APP_META[appId as AppId].name : appId;
 
@@ -118,6 +118,45 @@ export function DialogsHost({ controller }: { controller: AppController }) {
               onClick={() => void controller.confirmDeepLink()}
             >
               {t.deepLinkAllow}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={fileImportPrompt !== null}
+        onOpenChange={(open) => { if (!open) controller.setFileImportPrompt(null); }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t.fileImportReplaceTitle}</DialogTitle>
+            <DialogDescription>
+              {fileImportPrompt
+                ? t.fileImportReplaceDescription(
+                    fileImportPrompt.existing.displayName,
+                    fileImportPrompt.existing.version,
+                    fileImportPrompt.incoming.version,
+                  )
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          {fileImportPrompt?.incoming.coverDataUrl && (
+            <img
+              src={fileImportPrompt.incoming.coverDataUrl}
+              alt=""
+              className="max-h-40 w-full rounded-lg border object-cover"
+            />
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => controller.setFileImportPrompt(null)}>
+              {t.cancel}
+            </Button>
+            <Button
+              disabled={controller.busy !== null}
+              onClick={() => void controller.confirmFileImport()}
+            >
+              {controller.busy === 'import' ? <Spinner data-icon="inline-start" /> : null}
+              {t.fileImportReplace}
             </Button>
           </DialogFooter>
         </DialogContent>

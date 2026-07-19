@@ -159,6 +159,20 @@ export interface DeepLinkApplyRequest {
   appId: AppId;
 }
 
+// --- File-open imports (double-click / drag-drop of theme packages) ---
+
+export interface FileImportResult {
+  theme: InstalledTheme;
+  themes: InstalledTheme[];
+}
+
+/** Sent when an imported file would replace an already-installed theme. */
+export interface FileImportConfirmRequest {
+  path: string;
+  incoming: InstalledTheme;
+  existing: InstalledTheme;
+}
+
 // --- Desktop settings (userData/settings.json) ---
 
 export interface AppOverride {
@@ -239,6 +253,12 @@ export interface CodeDrobeApi {
   applyTheme(request: ApplyRequest): Promise<ApplyResponse>;
   restoreApp(appId: AppId): Promise<SystemStatus>;
   importTheme(): Promise<DialogResult>;
+  /** Import a theme package by path (file-open confirm / drag-drop). */
+  importThemeFromPath(path: string): Promise<FileImportResult>;
+  /** Route a dropped file through the same confirm-or-import decision as double-click. */
+  openThemeFile(path: string): Promise<void>;
+  /** Resolve the filesystem path of a dragged-in File object. */
+  getPathForFile(file: File): string;
   exportTheme(themeId: string): Promise<DialogResult>;
   deleteTheme(themeId: string): Promise<DeleteThemeResult>;
   listMarketplace(query?: MarketplaceQuery): Promise<MarketplacePage>;
@@ -266,4 +286,7 @@ export interface CodeDrobeApi {
   onAuthLoginUrl(listener: (url: string) => void): () => void;
   onUpdateDownloadProgress(listener: (progress: number) => void): () => void;
   onDeepLinkApply(listener: (request: DeepLinkApplyRequest) => void): () => void;
+  onFileImported(listener: (result: FileImportResult) => void): () => void;
+  onFileImportConfirm(listener: (request: FileImportConfirmRequest) => void): () => void;
+  onFileImportFailed(listener: (message: string) => void): () => void;
 }

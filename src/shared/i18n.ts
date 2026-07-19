@@ -111,6 +111,10 @@ export const uiMessages = {
     deepLinkAllow: '安装并应用',
     deepLinkDeny: '忽略',
     deepLinkThemeUnknown: '未找到请求的主题。',
+    fileImportReplaceTitle: '替换已安装的主题？',
+    fileImportReplaceDescription: (name: string, installedVersion: string, incomingVersion: string) =>
+      `已安装「${name}」v${installedVersion}。要用这个文件中的 v${incomingVersion} 替换它吗？`,
+    fileImportReplace: '替换',
     // Logs
     runtimeLog: '运行记录',
     noLogs: '尚无运行记录。',
@@ -272,6 +276,10 @@ export const uiMessages = {
     deepLinkAllow: 'Install & apply',
     deepLinkDeny: 'Ignore',
     deepLinkThemeUnknown: 'The requested theme was not found.',
+    fileImportReplaceTitle: 'Replace the installed theme?',
+    fileImportReplaceDescription: (name: string, installedVersion: string, incomingVersion: string) =>
+      `“${name}” v${installedVersion} is already installed. Replace it with v${incomingVersion} from this file?`,
+    fileImportReplace: 'Replace',
     runtimeLog: 'Runtime log',
     noLogs: 'No runtime activity yet.',
     showLogs: 'Show runtime log',

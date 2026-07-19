@@ -27,8 +27,46 @@ const config: ForgeConfig = {
     protocols: [
       { name: 'CodeDrobe', schemes: ['codedrobe'] },
     ],
+    // macOS file associations: double-clicking a theme package opens CodeDrobe
+    // (delivered via the app "open-file" event). Windows NSIS registers the
+    // same extensions through electron-builder.yml; the WiX MSI does not
+    // register associations yet.
+    extendInfo: {
+      CFBundleDocumentTypes: [
+        {
+          CFBundleTypeName: 'CodeDrobe Theme',
+          CFBundleTypeRole: 'Viewer',
+          CFBundleTypeIconFile: 'theme-file.icns',
+          LSHandlerRank: 'Owner',
+          LSItemContentTypes: ['app.codedrobe.theme'],
+        },
+        {
+          CFBundleTypeName: 'Legacy Codex Theme',
+          CFBundleTypeRole: 'Viewer',
+          CFBundleTypeIconFile: 'theme-file.icns',
+          LSHandlerRank: 'Default',
+          LSItemContentTypes: ['app.codedrobe.legacy-theme'],
+        },
+      ],
+      UTExportedTypeDeclarations: [
+        {
+          UTTypeIdentifier: 'app.codedrobe.theme',
+          UTTypeDescription: 'CodeDrobe Theme',
+          UTTypeConformsTo: ['public.data', 'public.json'],
+          UTTypeTagSpecification: { 'public.filename-extension': ['codedrobe-theme'] },
+        },
+        {
+          UTTypeIdentifier: 'app.codedrobe.legacy-theme',
+          UTTypeDescription: 'Legacy Codex Theme',
+          UTTypeConformsTo: ['public.data', 'public.json'],
+          UTTypeTagSpecification: { 'public.filename-extension': ['codex-theme'] },
+        },
+      ],
+    },
     extraResource: [
       path.resolve('assets', 'runtime'),
+      // Document icon referenced by CFBundleTypeIconFile (Contents/Resources).
+      path.resolve('assets', 'theme-file.icns'),
       path.resolve('LICENSE'),
       path.resolve('SOURCE_CODE.md'),
       path.resolve('THIRD_PARTY_NOTICES.md'),

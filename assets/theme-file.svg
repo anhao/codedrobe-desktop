@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">CodeDrobe theme package document icon</title>
+  <desc id="desc">A white page with a folded corner carrying the segmented CodeDrobe C in dark plum with gold and purple accents.</desc>
+  <defs>
+    <linearGradient id="page" x1="320" y1="96" x2="704" y2="928" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F1EFF8"/>
+    </linearGradient>
+    <linearGradient id="fold" x1="640" y1="96" x2="760" y2="288" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EFECF7"/>
+      <stop offset="1" stop-color="#D9D4E9"/>
+    </linearGradient>
+  </defs>
+  <path
+    d="M248 96 L640 96 L832 288 V872 Q832 928 776 928 H248 Q192 928 192 872 V152 Q192 96 248 96 Z"
+    fill="url(#page)" stroke="#D8D3E6" stroke-width="6"/>
+  <path d="M640 96 L832 288 H696 Q640 288 640 232 Z" fill="url(#fold)" stroke="#D8D3E6" stroke-width="6" stroke-linejoin="round"/>
+  <g transform="translate(192 220) scale(1.25)" fill="none" stroke-width="70" stroke-linecap="round">
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#F0B94B" transform="rotate(55 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#2A2440" transform="rotate(95 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#2A2440" transform="rotate(135 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#2A2440" transform="rotate(180 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#2A2440" transform="rotate(225 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#2A2440" transform="rotate(265 256 256)"/>
+    <path d="M387.68 246.79A132 132 0 0 1 387.68 265.21" stroke="#8174FF" transform="rotate(305 256 256)"/>
+  </g>
+</svg>

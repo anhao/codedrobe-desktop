@@ -7,6 +7,7 @@ import { THEME_EXTENSION } from '@codedrobe/core';
 import { AuthService } from './main/auth-service';
 import { CoreService } from './main/core-service';
 import { DeepLinkManager, extractDeepLinkFromArgv } from './main/deep-link';
+import { extractThemeFilesFromArgv, FileOpenQueue, isThemePackagePath } from './main/file-open';
 import { loadLocalePreference, saveLocalePreference } from './main/locale-preferences';
 import { MarketplaceService } from './main/marketplace-service';
 import { SettingsService } from './main/settings-service';
@@ -27,6 +28,7 @@ let updates: UpdateService;
 let auth: AuthService;
 let settings: SettingsService;
 const deepLinks = new DeepLinkManager();
+const fileOpens = new FileOpenQueue();
 /** Update staged by updates:download, consumed by updates:install. */
 let stagedUpdate: { kind: 'squirrel' } | { kind: 'nsis'; installerPath: string } | null = null;
 let locale: AppLocale = DEFAULT_LOCALE;
@@ -166,15 +168,46 @@ function canSilentNsisUpdate(assetName: string): boolean {
   return process.execPath.toLowerCase().startsWith(path.join(localAppData, 'Programs').toLowerCase());
 }
 
+/**
+ * Auto-import a theme package opened from the OS (double-click, "Open with",
+ * drag-drop). New theme ids install silently; when the id is already taken the
+ * renderer asks the user before replacing (imports never overwrite silently).
+ */
+async function handleThemeFileOpen(filePath: string): Promise<void> {
+  mainWindow?.show();
+  mainWindow?.focus();
+  try {
+    const inspection = await library.inspectPackage(filePath);
+    if (inspection.existing) {
+      mainWindow?.webContents.send('file:import-confirm', {
+        path: filePath,
+        incoming: inspection.incoming,
+        existing: inspection.existing,
+      });
+      return;
+    }
+    const theme = await library.importPackage(filePath);
+    mainWindow?.webContents.send('file:imported', { theme, themes: await library.summaries() });
+  } catch (error) {
+    mainWindow?.webContents.send('file:import-failed', error instanceof Error ? error.message : String(error));
+  }
+}
+
 function registerIpc(): void {
-  ipcMain.handle('app:bootstrap', async () => ({
-    themes: await library.summaries(),
-    status: await core.status(),
-    locale,
-    appVersion: app.getVersion(),
-    auth: await auth.status(),
-    webBaseUrl: API_BASE,
-  }));
+  ipcMain.handle('app:bootstrap', async () => {
+    // The renderer registers its event listeners before app:bootstrap resolves,
+    // so flushing queued file opens here (unlike deep links, which flush on
+    // did-finish-load) guarantees the confirm prompt is never lost on cold start.
+    fileOpens.setSink((filePath) => void handleThemeFileOpen(filePath));
+    return {
+      themes: await library.summaries(),
+      status: await core.status(),
+      locale,
+      appVersion: app.getVersion(),
+      auth: await auth.status(),
+      webBaseUrl: API_BASE,
+    };
+  });
   ipcMain.handle('locale:set', async (_event, nextLocale: unknown) => {
     if (!isAppLocale(nextLocale)) throw new Error(getMainMessages().invalidLocale);
     locale = nextLocale;
@@ -203,6 +236,19 @@ function registerIpc(): void {
     if (selection.canceled || !selection.filePaths[0]) return { canceled: true };
     const theme = await library.importPackage(selection.filePaths[0]);
     return { canceled: false, path: selection.filePaths[0], theme };
+  });
+  ipcMain.handle('theme:import-path', async (_event, filePath: unknown) => {
+    if (typeof filePath !== 'string' || !isThemePackagePath(filePath)) {
+      throw new Error(getMainMessages().invalidPackage);
+    }
+    const theme = await library.importPackage(filePath);
+    return { theme, themes: await library.summaries() };
+  });
+  ipcMain.handle('theme:open-file', (_event, filePath: unknown) => {
+    if (typeof filePath !== 'string' || !isThemePackagePath(filePath)) {
+      throw new Error(getMainMessages().invalidPackage);
+    }
+    fileOpens.handlePath(filePath);
   });
   ipcMain.handle('theme:export', async (_event, themeId: string) => {
     const copy = getMainMessages();
@@ -337,12 +383,19 @@ app.on('second-instance', (_event, argv) => {
   mainWindow?.focus();
   const url = extractDeepLinkFromArgv(argv);
   if (url) deepLinks.handleUrl(url);
+  for (const filePath of extractThemeFilesFromArgv(argv)) fileOpens.handlePath(filePath);
 });
 
 // macOS deep links arrive via open-url (may fire before ready).
 app.on('open-url', (event, url) => {
   event.preventDefault();
   deepLinks.handleUrl(url);
+});
+
+// macOS file associations arrive via open-file (may fire before ready).
+app.on('open-file', (event, filePath) => {
+  event.preventDefault();
+  fileOpens.handlePath(filePath);
 });
 
 app.whenReady().then(async () => {
@@ -371,9 +424,10 @@ app.whenReady().then(async () => {
   core.setLogListener(sendLog);
   await core.initialize();
   registerIpc();
-  // Windows cold-start deep link arrives in argv.
+  // Windows cold-start deep link / theme files arrive in argv.
   const initialDeepLink = extractDeepLinkFromArgv(process.argv);
   if (initialDeepLink) deepLinks.handleUrl(initialDeepLink);
+  for (const filePath of extractThemeFilesFromArgv(process.argv)) fileOpens.handlePath(filePath);
   await createWindow();
   createTray();
 }).catch((error) => {
